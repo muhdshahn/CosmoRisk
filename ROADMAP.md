@@ -1,6 +1,6 @@
-# Orbital Sentinel - Complete Project Roadmap
+# CosmoRisk - Complete Project Roadmap
 
-Bu döküman, Orbital Sentinel uygulamasının tam açıklamasını ve gelecek geliştirmeler için yol haritasını içerir.
+Bu döküman, CosmoRisk uygulamasının tam açıklamasını ve gelecek geliştirmeler için yol haritasını içerir.
 
 **Son Güncelleme:** 18.12.2025  
 **Geliştirici:** Mehmet Gümüş ([@SpaceEngineerSS](https://github.com/SpaceEngineerSS))
@@ -9,7 +9,7 @@ Bu döküman, Orbital Sentinel uygulamasının tam açıklamasını ve gelecek g
 
 ## 📋 Proje Özeti
 
-**Orbital Sentinel**, NASA'nın gerçek NEO (Near-Earth Object) verilerini kullanarak asteroid yörüngelerini simüle eden ve olası çarpma senaryolarında saptırma stratejilerini test etmeye olanak tanıyan bir masaüstü uygulamasıdır.
+**CosmoRisk**, NASA'nın gerçek NEO (Near-Earth Object) verilerini kullanarak asteroid yörüngelerini simüle eden ve olası çarpma senaryolarında saptırma stratejilerini test etmeye olanak tanıyan bir masaüstü uygulamasıdır.
 
 | Özellik | Değer |
 |---------|-------|

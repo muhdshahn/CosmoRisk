@@ -1,6 +1,6 @@
-# Contributing to Orbital Sentinel
+# Contributing to CosmoRisk
 
-Thank you for your interest in contributing to Orbital Sentinel! This document provides guidelines for contributing.
+Thank you for your interest in contributing to CosmoRisk! This document provides guidelines for contributing.
 
 ## 🚀 Getting Started
 
@@ -94,4 +94,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-Thank you for helping make Orbital Sentinel better! 🌟
+Thank you for helping make CosmoRisk better! 🌟

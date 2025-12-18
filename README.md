@@ -229,12 +229,12 @@ We take security seriously. You can verify the application is safe:
 
 ## 📖 Citation
 
-If you use Orbital Sentinel in your research, please cite:
+If you use CosmoRisk in your research, please cite:
 
 ```bibtex
-@software{orbital_sentinel_2025,
+@software{cosmorisk_2025,
   author = {Mehmet Gümüş},
-  title = {Orbital Sentinel: High-Fidelity NEO Defense Simulator},
+  title = {CosmoRisk: High-Fidelity NEO Defense Simulator},
   version = {2.0.1},
   year = {2025},
   url = {https://github.com/SpaceEngineerSS/CosmoRisk}

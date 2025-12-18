@@ -2,7 +2,7 @@
 
 ## Simulation Accuracy Notice
 
-This software ("Orbital Sentinel") is provided for **educational and research purposes only**. 
+This software ("CosmoRisk") is provided for **educational and research purposes only**. 
 The simulation results, orbital predictions, and impact assessments are **approximations** 
 based on simplified physical models and may not accurately represent real-world outcomes.
 
