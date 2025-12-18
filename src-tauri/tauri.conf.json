@@ -40,11 +40,6 @@
     "copyright": "© 2025 Mehmet Gümüş. All rights reserved.",
     "category": "Education",
     "shortDescription": "Near-Earth Object Tracking & Deflection Simulator",
-    "longDescription": "CosmoRisk is a physics-accurate NEO tracking and deflection simulation application. Track real asteroids from NASA data, analyze impact risks, and simulate deflection missions.",
-    "windows": {
-      "certificateThumbprint": "FBA0F34D3439787A5B1767018899E1B510A14E34",
-      "timestampUrl": "http://timestamp.digicert.com",
-      "digestAlgorithm": "sha256"
-    }
+    "longDescription": "CosmoRisk is a physics-accurate NEO tracking and deflection simulation application. Track real asteroids from NASA data, analyze impact risks, and simulate deflection missions."
   }
 }
