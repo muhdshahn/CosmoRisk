@@ -21,9 +21,12 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: cargo build --release --manifest-path src-tauri/Cargo.toml
+      - name: Rename for clarity
+        run: mv src-tauri/target/release/cosmorisk.exe src-tauri/target/release/cosmorisk-windows.exe
+        shell: bash
       - uses: softprops/action-gh-release@v1
         with:
-          files: src-tauri/target/release/cosmorisk.exe
+          files: src-tauri/target/release/cosmorisk-windows.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -90,7 +93,7 @@ jobs:
             ### Download
             | Platform | File |
             |----------|------|
-            | Windows | `cosmorisk.exe` |
+            | Windows | `cosmorisk-windows.exe` |
             | Linux | `cosmorisk-linux` |
             | macOS | `cosmorisk-macos` |
             
