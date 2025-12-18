@@ -16,18 +16,18 @@ Download the latest release for your platform:
 
 ### Windows
 ```
-CosmoRisk_2.0.0_x64.msi
+CosmoRisk_2.0.1_x64.msi
 ```
 
 ### macOS
 ```
-CosmoRisk_2.0.0_x64.dmg
+CosmoRisk_2.0.1_x64.dmg
 ```
 
 ### Linux
 ```
-CosmoRisk_2.0.0_amd64.AppImage
-CosmoRisk_2.0.0_amd64.deb
+CosmoRisk_2.0.1_amd64.AppImage
+CosmoRisk_2.0.1_amd64.deb
 ```
 
 📥 [Download from Releases](https://github.com/SpaceEngineerSS/CosmoRisk/releases)

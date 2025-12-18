@@ -1,4 +1,4 @@
-// Orbital Sentinel - Main Application Entry
+// CosmoRisk - Main Application Entry
 // Three.js + Tauri Desktop Application for NEO Tracking
 // State-of-the-Art visualization with post-processing and sonification
 
@@ -25,6 +25,11 @@ interface FrontendBody {
   velocity: [number, number, number];
   radius: number;
   is_hazardous: boolean;
+  semi_major_axis_au: number;          // For orbit visualization
+  eccentricity: number;                // For elliptical orbits
+  inclination_rad: number;             // Orbital inclination (radians)
+  longitude_ascending_node_rad: number; // RAAN Ω (radians)
+  argument_perihelion_rad: number;     // Argument of perihelion ω (radians)
 }
 
 interface FrontendState {
@@ -95,6 +100,7 @@ class OrbitalSentinelApp {
   private showOrbits = true;
   private showGrid = false;
   private showHazardousOnly = false;  // Filter to show only hazardous asteroids
+  private distanceUnit: 'au' | 'km' | 'ld' = 'au';  // User's preferred distance unit
 
   // Stats
   private frameCount = 0;
@@ -303,8 +309,8 @@ class OrbitalSentinelApp {
     const atmosphere2 = new THREE.Mesh(atmoGeometry2, atmoMaterial2);
     this.earthMesh.add(atmosphere2);
 
-    // Earth orbit trail
-    this.createOrbitPath('earth', 1.0, 0x2266aa);
+    // Earth orbit trail (elliptical with e=0.0167)
+    this.createOrbitPath('earth', 1.0, 0x2266aa, 0.0167);
   }
 
   private createMoon(): void {
@@ -374,14 +380,24 @@ class OrbitalSentinelApp {
     this.scene.add(this.trajectoryPreview);
   }
 
-  private createOrbitPath(id: string, semiMajorAxisAU: number, color: number): void {
+  private createOrbitPath(id: string, semiMajorAxisAU: number, color: number, eccentricity: number = 0): void {
     const points: THREE.Vector3[] = [];
     const segments = 128;
 
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      const x = Math.cos(angle) * semiMajorAxisAU * SCALE;
-      const z = Math.sin(angle) * semiMajorAxisAU * SCALE;
+
+      // Elliptical orbit: r = a(1-e²) / (1 + e*cos(θ))
+      // For visualization, we use parametric form:
+      // x = a * cos(θ), z = b * sin(θ) where b = a * sqrt(1-e²)
+      const a = semiMajorAxisAU * SCALE;
+      const b = a * Math.sqrt(1 - eccentricity * eccentricity);
+
+      // Focus offset (Sun at one focus)
+      const focusOffset = a * eccentricity;
+
+      const x = Math.cos(angle) * a - focusOffset;
+      const z = Math.sin(angle) * b;
       points.push(new THREE.Vector3(x, 0, z));
     }
 
@@ -629,6 +645,31 @@ class OrbitalSentinelApp {
       this.toggleShortcutsModal(false);
     });
 
+    // About modal handlers
+    document.getElementById('btn-about')?.addEventListener('click', () => {
+      this.toggleModal('about-modal', true);
+    });
+    document.getElementById('close-about')?.addEventListener('click', () => {
+      this.toggleModal('about-modal', false);
+    });
+    document.querySelector('#about-modal .modal-backdrop')?.addEventListener('click', () => {
+      this.toggleModal('about-modal', false);
+    });
+
+    // Settings modal handlers
+    document.getElementById('btn-settings')?.addEventListener('click', () => {
+      this.openSettingsModal();
+    });
+    document.getElementById('close-settings')?.addEventListener('click', () => {
+      this.toggleModal('settings-modal', false);
+    });
+    document.querySelector('#settings-modal .modal-backdrop')?.addEventListener('click', () => {
+      this.toggleModal('settings-modal', false);
+    });
+    document.getElementById('btn-save-settings')?.addEventListener('click', () => {
+      this.saveSettingsFromModal();
+    });
+
     // Camera preset buttons
     document.getElementById('cam-sun')?.addEventListener('click', () => {
       this.setCameraPreset('sun');
@@ -733,6 +774,26 @@ class OrbitalSentinelApp {
 
     // Load saved settings
     this.loadSettings();
+
+    // Monte Carlo Analysis button
+    document.getElementById('btn-run-monte-carlo')?.addEventListener('click', () => {
+      this.runMonteCarlo();
+    });
+
+    // Gravity Tractor button
+    document.getElementById('btn-apply-gravity-tractor')?.addEventListener('click', () => {
+      this.applyGravityTractor();
+    });
+
+    // Date range search button
+    document.getElementById('btn-fetch-by-date')?.addEventListener('click', () => {
+      this.fetchAsteroidsByDate();
+    });
+
+    // NEO ID search button
+    document.getElementById('btn-fetch-by-id')?.addEventListener('click', () => {
+      this.fetchAsteroidById();
+    });
   }
 
   // ===========================================================================
@@ -1654,7 +1715,7 @@ class OrbitalSentinelApp {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `orbital_sentinel_data_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `cosmorisk_data_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -1672,7 +1733,7 @@ class OrbitalSentinelApp {
     // Create download link
     const a = document.createElement('a');
     a.href = dataUrl;
-    a.download = `orbital_sentinel_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+    a.download = `cosmorisk_${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
     a.click();
 
     this.showToast('Screenshot', 'Image captured and downloaded', 'success');
@@ -1793,32 +1854,95 @@ class OrbitalSentinelApp {
     }
   }
 
-  private calculateMOID(
-    asteroidPos: [number, number, number],
-    asteroidVel: [number, number, number],
-    currentDistanceToEarth: number
-  ): number {
-    // Use actual current distance as primary MOID estimate
-    // The current distance is a good approximation for MOID for NEOs
+  private calculateMOID(body: FrontendBody): number {
+    // Proper MOID calculation using orbital element sampling
+    // MOID = Minimum Orbit Intersection Distance
+    // Sample both orbits and find minimum distance between orbit paths
 
-    // Calculate orbital velocity magnitude for better estimate
-    const v = Math.sqrt(asteroidVel[0] ** 2 + asteroidVel[1] ** 2 + asteroidVel[2] ** 2);
-    const r = Math.sqrt(asteroidPos[0] ** 2 + asteroidPos[1] ** 2 + asteroidPos[2] ** 2);
+    // Asteroid orbital elements
+    const a1 = body.semi_major_axis_au || 1.5;
+    const e1 = body.eccentricity || 0.2;
+    const i1 = body.inclination_rad || 0;
+    const omega1 = body.longitude_ascending_node_rad || 0;  // RAAN
+    const w1 = body.argument_perihelion_rad || 0;
 
-    // For near-Earth objects, MOID is approximately the minimum of:
-    // 1. Current distance
-    // 2. Estimated perihelion/aphelion intersection
-    const velocityFactor = v / 0.017; // Typical NEO velocity ~0.017 AU/day
+    // Earth orbital elements (simplified, nearly circular)
+    const a2 = 1.0;  // 1 AU
+    const e2 = 0.0167;
+    const w2 = 102.9 * Math.PI / 180;  // Argument of perihelion
 
-    // Adjust MOID estimate based on orbital geometry
-    let moidEstimate = currentDistanceToEarth;
+    // Sample both orbits at N points
+    const N = 72;  // 5° increments
+    let minDist = Infinity;
 
-    // If the asteroid is moving towards Earth (closing), MOID could be smaller
-    if (r < 1.5 && velocityFactor > 0.8) {
-      moidEstimate *= 0.7; // Could get closer
+    // Precompute rotation matrices for asteroid orbit
+    const cosO1 = Math.cos(omega1);
+    const sinO1 = Math.sin(omega1);
+    const cosI1 = Math.cos(i1);
+    const sinI1 = Math.sin(i1);
+    const cosW1 = Math.cos(w1);
+    const sinW1 = Math.sin(w1);
+
+    // Rotation matrix for asteroid
+    const r11_1 = cosO1 * cosW1 - sinO1 * sinW1 * cosI1;
+    const r12_1 = -cosO1 * sinW1 - sinO1 * cosW1 * cosI1;
+    const r21_1 = sinO1 * cosW1 + cosO1 * sinW1 * cosI1;
+    const r22_1 = -sinO1 * sinW1 + cosO1 * cosW1 * cosI1;
+    const r31_1 = sinW1 * sinI1;
+    const r32_1 = cosW1 * sinI1;
+
+    // Precompute rotation matrices for Earth orbit (simplified: i=0, Ω=0)
+    const cosW2 = Math.cos(w2);
+    const sinW2 = Math.sin(w2);
+    const r11_2 = cosW2;
+    const r12_2 = -sinW2;
+    const r21_2 = sinW2;
+    const r22_2 = cosW2;
+
+    // Sample asteroid orbit
+    const asteroidPoints: [number, number, number][] = [];
+    for (let j = 0; j < N; j++) {
+      const theta = (j / N) * 2 * Math.PI;  // True anomaly
+      const r1 = a1 * (1 - e1 * e1) / (1 + e1 * Math.cos(theta));
+
+      // Position in orbital plane
+      const xOrb = r1 * Math.cos(theta);
+      const yOrb = r1 * Math.sin(theta);
+
+      // Transform to heliocentric
+      const x = r11_1 * xOrb + r12_1 * yOrb;
+      const y = r21_1 * xOrb + r22_1 * yOrb;
+      const z = r31_1 * xOrb + r32_1 * yOrb;
+
+      asteroidPoints.push([x, y, z]);
     }
 
-    return Math.max(0.0001, moidEstimate);
+    // Sample Earth orbit and find minimum distance
+    for (let k = 0; k < N; k++) {
+      const theta = (k / N) * 2 * Math.PI;
+      const r2 = a2 * (1 - e2 * e2) / (1 + e2 * Math.cos(theta));
+
+      const xOrb = r2 * Math.cos(theta);
+      const yOrb = r2 * Math.sin(theta);
+
+      // Earth in ecliptic (z=0)
+      const xE = r11_2 * xOrb + r12_2 * yOrb;
+      const yE = r21_2 * xOrb + r22_2 * yOrb;
+      const zE = 0;
+
+      // Find minimum distance to asteroid orbit
+      for (const [xA, yA, zA] of asteroidPoints) {
+        const dx = xA - xE;
+        const dy = yA - yE;
+        const dz = zA - zE;
+        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (dist < minDist) {
+          minDist = dist;
+        }
+      }
+    }
+
+    return Math.max(0.0001, minDist);  // Return MOID in AU
   }
 
   private updateAsteroidInfo(body: FrontendBody): void {
@@ -1876,8 +2000,8 @@ class OrbitalSentinelApp {
         distanceToEarth = Math.sqrt(dx * dx + dy * dy + dz * dz);
       }
 
-      // Use position to calculate approximate MOID (simplified)
-      const moid = this.calculateMOID(body.position, body.velocity, distanceToEarth);
+      // Use orbital elements for proper MOID calculation
+      const moid = this.calculateMOID(body);
       moidDisplay.classList.remove('hidden');
       moidAu.textContent = moid.toFixed(6);
       moidLd.textContent = (moid * 389.17).toFixed(2); // AU to Lunar Distance
@@ -2003,17 +2127,55 @@ class OrbitalSentinelApp {
     this.distanceToEarthLine.computeLineDistances();
     this.scene.add(this.distanceToEarthLine);
 
-    // Calculate approximate orbit path based on current position and velocity
+    // Calculate 3D elliptical orbit path using full Keplerian orbital elements
     const orbitPoints: THREE.Vector3[] = [];
-    const numPoints = 100;
+    const numPoints = 128;
 
-    // Simple circular approximation around the Sun
-    const r = Math.sqrt(body.position[0] ** 2 + body.position[1] ** 2 + body.position[2] ** 2);
-    for (let i = 0; i <= numPoints; i++) {
-      const angle = (i / numPoints) * Math.PI * 2;
-      const x = Math.cos(angle) * r * SCALE;
-      const z = Math.sin(angle) * r * SCALE;
-      orbitPoints.push(new THREE.Vector3(x, 0, z));
+    // Orbital elements
+    const a = body.semi_major_axis_au || Math.sqrt(body.position[0] ** 2 + body.position[1] ** 2 + body.position[2] ** 2);
+    const e = body.eccentricity || 0;
+    const i = body.inclination_rad || 0;              // Inclination
+    const omega = body.longitude_ascending_node_rad || 0;  // RAAN (Ω)
+    const w = body.argument_perihelion_rad || 0;      // Argument of perihelion (ω)
+
+    const b = a * Math.sqrt(1 - e * e);  // Semi-minor axis
+    const focusOffset = a * e;  // Sun at one focus
+
+    // Precompute rotation matrix elements for Rz(Ω)·Rx(i)·Rz(ω)
+    // This rotates from perifocal (orbital plane) to heliocentric ecliptic frame
+    const cosO = Math.cos(omega);
+    const sinO = Math.sin(omega);
+    const cosI = Math.cos(i);
+    const sinI = Math.sin(i);
+    const cosW = Math.cos(w);
+    const sinW = Math.sin(w);
+
+    // Combined rotation matrix elements
+    const r11 = cosO * cosW - sinO * sinW * cosI;
+    const r12 = -cosO * sinW - sinO * cosW * cosI;
+    const r21 = sinO * cosW + cosO * sinW * cosI;
+    const r22 = -sinO * sinW + cosO * cosW * cosI;
+    const r31 = sinW * sinI;
+    const r32 = cosW * sinI;
+
+    for (let j = 0; j <= numPoints; j++) {
+      const angle = (j / numPoints) * Math.PI * 2;
+
+      // Position in orbital plane (perifocal frame)
+      const xOrb = Math.cos(angle) * a - focusOffset;
+      const yOrb = Math.sin(angle) * b;
+
+      // Transform to heliocentric ecliptic frame using rotation matrix
+      const xEcl = r11 * xOrb + r12 * yOrb;
+      const yEcl = r21 * xOrb + r22 * yOrb;
+      const zEcl = r31 * xOrb + r32 * yOrb;
+
+      // Convert to scene coordinates (Y-up in Three.js, swap Y/Z)
+      orbitPoints.push(new THREE.Vector3(
+        xEcl * SCALE,
+        zEcl * SCALE,  // Z becomes Y (up)
+        yEcl * SCALE   // Y becomes Z (forward)
+      ));
     }
 
     const orbitGeometry = new THREE.BufferGeometry().setFromPoints(orbitPoints);
@@ -2078,7 +2240,7 @@ class OrbitalSentinelApp {
            data-id="${item.body.id}" 
            data-name="${item.body.name}">
         <span class="asteroid-name" title="${item.body.name}">${item.body.name}</span>
-        <span class="asteroid-distance">${item.distance.toFixed(3)} AU</span>
+        <span class="asteroid-distance">${this.formatDistance(item.distance)}</span>
         ${item.body.is_hazardous ? '<span class="asteroid-hazard-badge">⚠️</span>' : ''}
       </div>
     `).join('');
@@ -2145,7 +2307,7 @@ class OrbitalSentinelApp {
 
   private showTutorial(): void {
     // Check localStorage for "don't show again"
-    if (localStorage.getItem('orbital-sentinel-skip-tutorial') === 'true') {
+    if (localStorage.getItem('cosmorisk-skip-tutorial') === 'true') {
       // Don't show automatically, but user explicitly clicked
     }
 
@@ -2176,7 +2338,7 @@ class OrbitalSentinelApp {
     // Save "don't show again" preference
     const checkbox = document.getElementById('dont-show-again') as HTMLInputElement;
     if (checkbox?.checked) {
-      localStorage.setItem('orbital-sentinel-skip-tutorial', 'true');
+      localStorage.setItem('cosmorisk-skip-tutorial', 'true');
     }
   }
 
@@ -2305,9 +2467,17 @@ class OrbitalSentinelApp {
     let vy = body.velocity[1] + deltaV[1] * 0.00001;
     let vz = body.velocity[2] + deltaV[2] * 0.00001;
 
-    // Simple orbit projection (200 points over ~100 days)
+    // Orbital mechanics constants (AU³/day², AU, etc.)
     const dt = 1; // 1 day steps
-    const GM_SUN = 0.0002959; // AU^3/day^2
+    const GM_SUN = 0.0002959; // AU³/day²
+    const GM_JUPITER = 0.0000000282; // AU³/day² (Jupiter's μ in AU³/day²)
+
+    // Jupiter orbital parameters
+    const JUPITER_SEMI_MAJOR = 5.2; // AU
+    const JUPITER_PERIOD = 4332.59; // days
+
+    // Solar Radiation Pressure coefficient (simplified)
+    const SRP_COEFF = 1e-11; // AU/day² per AU⁻² (scaled for small asteroids)
 
     for (let i = 0; i < 200; i++) {
       // Store position
@@ -2317,14 +2487,38 @@ class OrbitalSentinelApp {
         y * SCALE
       ));
 
-      // Calculate gravitational acceleration (simplified 2-body)
-      const r = Math.sqrt(x * x + y * y + z * z);
-      const r3 = r * r * r;
-      const ax = -GM_SUN * x / r3;
-      const ay = -GM_SUN * y / r3;
-      const az = -GM_SUN * z / r3;
+      // Sun gravitational acceleration
+      const rSun = Math.sqrt(x * x + y * y + z * z);
+      const rSun3 = rSun * rSun * rSun;
+      let ax = -GM_SUN * x / rSun3;
+      let ay = -GM_SUN * y / rSun3;
+      let az = -GM_SUN * z / rSun3;
 
-      // Update velocity
+      // Jupiter perturbation (simplified circular orbit in ecliptic)
+      const jupiterAngle = (2 * Math.PI * i) / JUPITER_PERIOD;
+      const jupX = JUPITER_SEMI_MAJOR * Math.cos(jupiterAngle);
+      const jupY = JUPITER_SEMI_MAJOR * Math.sin(jupiterAngle);
+      const jupZ = 0;
+
+      const dxJ = jupX - x;
+      const dyJ = jupY - y;
+      const dzJ = jupZ - z;
+      const rJup = Math.sqrt(dxJ * dxJ + dyJ * dyJ + dzJ * dzJ);
+
+      if (rJup > 0.1) { // Avoid singularity
+        const rJup3 = rJup * rJup * rJup;
+        ax += GM_JUPITER * dxJ / rJup3;
+        ay += GM_JUPITER * dyJ / rJup3;
+        az += GM_JUPITER * dzJ / rJup3;
+      }
+
+      // Solar Radiation Pressure (radial, away from Sun)
+      const srpMag = SRP_COEFF / (rSun * rSun);
+      ax += srpMag * x / rSun;
+      ay += srpMag * y / rSun;
+      az += srpMag * z / rSun;
+
+      // Update velocity (Euler integration)
       vx += ax * dt;
       vy += ay * dt;
       vz += az * dt;
@@ -2421,7 +2615,7 @@ class OrbitalSentinelApp {
     }
 
     // Save preference
-    localStorage.setItem('orbital-sentinel-theme', this.isDarkTheme ? 'dark' : 'light');
+    localStorage.setItem('cosmorisk-theme', this.isDarkTheme ? 'dark' : 'light');
     this.showToast('Theme', this.isDarkTheme ? 'Dark mode' : 'Light mode', 'success');
   }
 
@@ -2453,21 +2647,27 @@ class OrbitalSentinelApp {
 
   private loadSettings(): void {
     // Load theme
-    const savedTheme = localStorage.getItem('orbital-sentinel-theme');
+    const savedTheme = localStorage.getItem('cosmorisk-theme');
     if (savedTheme === 'light') {
       this.isDarkTheme = false;
       this.toggleTheme(); // Apply light theme
       this.isDarkTheme = false; // toggleTheme flips it
     }
 
+    // Load distance unit preference
+    const savedUnit = localStorage.getItem('cosmorisk_distance_unit');
+    if (savedUnit === 'km' || savedUnit === 'ld' || savedUnit === 'au') {
+      this.distanceUnit = savedUnit;
+    }
+
     // Load other settings
-    const showOrbits = localStorage.getItem('orbital-sentinel-show-orbits');
+    const showOrbits = localStorage.getItem('cosmorisk-show-orbits');
     if (showOrbits !== null) {
       this.showOrbits = showOrbits === 'true';
       (document.getElementById('show-orbits') as HTMLInputElement).checked = this.showOrbits;
     }
 
-    const postProcessing = localStorage.getItem('orbital-sentinel-post-processing');
+    const postProcessing = localStorage.getItem('cosmorisk-post-processing');
     if (postProcessing !== null) {
       this.postProcessingEnabled = postProcessing === 'true';
       (document.getElementById('post-processing') as HTMLInputElement).checked = this.postProcessingEnabled;
@@ -2475,8 +2675,8 @@ class OrbitalSentinelApp {
   }
 
   private saveSettings(): void {
-    localStorage.setItem('orbital-sentinel-show-orbits', String(this.showOrbits));
-    localStorage.setItem('orbital-sentinel-post-processing', String(this.postProcessingEnabled));
+    localStorage.setItem('cosmorisk-show-orbits', String(this.showOrbits));
+    localStorage.setItem('cosmorisk-post-processing', String(this.postProcessingEnabled));
   }
 
   // =========================================================================
@@ -2581,7 +2781,7 @@ class OrbitalSentinelApp {
     // Generate PDF content as a downloadable text report
     const reportContent = `
 ================================================================================
-                        ORBITAL SENTINEL - ASTEROID REPORT
+                        COSMORISK - ASTEROID REPORT
 ================================================================================
 
 Generated: ${new Date().toLocaleString()}
@@ -2615,7 +2815,7 @@ MOID: ${(distanceToEarth * 0.1).toFixed(4)} AU (estimated)
 --------------------------------------------------------------------------------
 NOTES
 --------------------------------------------------------------------------------
-This report was generated by Orbital Sentinel simulation software.
+This report was generated by CosmoRisk simulation software.
 For official hazard assessment, refer to NASA's CNEOS or ESA's NEO Coordination Centre.
 
 ================================================================================
@@ -2907,6 +3107,256 @@ For official hazard assessment, refer to NASA's CNEOS or ESA's NEO Coordination 
     if (bottomSheet) {
       bottomSheet.classList.remove('open');
       this.bottomSheetOpen = false;
+    }
+  }
+
+  // ===========================================================================
+  // MONTE CARLO ANALYSIS
+  // ===========================================================================
+
+  private async runMonteCarlo(): Promise<void> {
+    if (!this.selectedBodyId) {
+      this.showToast('Error', 'Select an asteroid first', 'warning');
+      return;
+    }
+
+    const posUncertainty = parseFloat((document.getElementById('mc-pos-uncertainty') as HTMLInputElement)?.value) || 1000;
+    const velUncertainty = parseFloat((document.getElementById('mc-vel-uncertainty') as HTMLInputElement)?.value) || 10;
+    const simDays = parseFloat((document.getElementById('mc-days') as HTMLInputElement)?.value) || 365;
+
+    this.showToast('Monte Carlo', 'Running 1000 simulations...', 'info');
+
+    try {
+      const result = await invoke<{
+        num_runs: number;
+        num_impacts: number;
+        impact_probability: number;
+        mean_moid_km: number;
+        std_moid_km: number;
+        min_moid_km: number;
+        palermo_scale: number;
+      }>('run_monte_carlo', {
+        bodyId: this.selectedBodyId,
+        positionUncertaintyKm: posUncertainty,
+        velocityUncertaintyMs: velUncertainty,
+        numRuns: 1000,
+        simulationDays: simDays
+      });
+
+      // Show results
+      const mcResults = document.getElementById('mc-results');
+      mcResults?.classList.remove('hidden');
+
+      document.getElementById('mc-probability')!.textContent =
+        result.impact_probability > 0
+          ? `${(result.impact_probability * 100).toFixed(4)}%`
+          : '0%';
+      document.getElementById('mc-mean-moid')!.textContent = result.mean_moid_km.toExponential(2);
+      document.getElementById('mc-min-moid')!.textContent = result.min_moid_km.toExponential(2);
+      document.getElementById('mc-palermo')!.textContent = result.palermo_scale.toFixed(2);
+
+      this.showToast('Monte Carlo Complete',
+        `${result.num_impacts} impacts in ${result.num_runs} runs`,
+        result.num_impacts > 0 ? 'warning' : 'success');
+
+    } catch (error) {
+      console.error('Monte Carlo failed:', error);
+      this.showToast('Error', 'Monte Carlo analysis failed', 'error');
+    }
+  }
+
+  // ===========================================================================
+  // GRAVITY TRACTOR DEFLECTION
+  // ===========================================================================
+
+  private async applyGravityTractor(): Promise<void> {
+    if (!this.selectedBodyId) {
+      this.showToast('Error', 'Select an asteroid first', 'warning');
+      return;
+    }
+
+    const mass = parseFloat((document.getElementById('gt-mass') as HTMLInputElement)?.value) || 5000;
+    const distance = parseFloat((document.getElementById('gt-distance') as HTMLInputElement)?.value) || 100;
+    const duration = parseFloat((document.getElementById('gt-duration') as HTMLInputElement)?.value) || 365;
+
+    try {
+      const result = await invoke<{
+        delta_v_applied_ms: number;
+        estimated_deflection_time_days: number;
+      }>('apply_gravity_tractor', {
+        bodyId: this.selectedBodyId,
+        spacecraftMassKg: mass,
+        hoverDistanceM: distance,
+        durationDays: duration
+      });
+
+      // Show result
+      const gtResult = document.getElementById('gt-result');
+      gtResult?.classList.remove('hidden');
+
+      document.getElementById('gt-delta-v')!.textContent = `${result.delta_v_applied_ms.toExponential(3)} m/s`;
+      document.getElementById('gt-time')!.textContent = `${result.estimated_deflection_time_days.toFixed(0)} days`;
+
+      this.showToast('Gravity Tractor Applied',
+        `Δv: ${result.delta_v_applied_ms.toExponential(2)} m/s`, 'success');
+
+      this.updateImpactPrediction();
+
+    } catch (error) {
+      console.error('Gravity Tractor failed:', error);
+      this.showToast('Error', 'Gravity Tractor application failed', 'error');
+    }
+  }
+
+  // ===========================================================================
+  // DATE-BASED ASTEROID SEARCH
+  // ===========================================================================
+
+  private async fetchAsteroidsByDate(): Promise<void> {
+    const startDate = (document.getElementById('search-start-date') as HTMLInputElement)?.value;
+    const endDate = (document.getElementById('search-end-date') as HTMLInputElement)?.value;
+
+    if (!startDate || !endDate) {
+      this.showToast('Error', 'Please enter both start and end dates', 'warning');
+      return;
+    }
+
+    this.showToast('Searching', `Fetching NEOs from ${startDate} to ${endDate}...`, 'info');
+
+    try {
+      const count = await invoke<number>('fetch_asteroids_by_date', {
+        startDate,
+        endDate
+      });
+
+      this.showToast('NEOs Loaded', `Found ${count} asteroids with close approaches`, 'success');
+
+    } catch (error) {
+      console.error('Date search failed:', error);
+      this.showToast('Error', 'Failed to fetch asteroids by date', 'error');
+    }
+  }
+
+  // ===========================================================================
+  // SINGLE ASTEROID SEARCH BY ID
+  // ===========================================================================
+
+  private async fetchAsteroidById(): Promise<void> {
+    const neoId = (document.getElementById('neo-id-input') as HTMLInputElement)?.value?.trim();
+
+    if (!neoId) {
+      this.showToast('Error', 'Please enter a NASA NEO ID', 'warning');
+      return;
+    }
+
+    this.showToast('Searching', `Looking up NEO ${neoId}...`, 'info');
+
+    try {
+      const asteroid = await invoke<{
+        id: string;
+        name: string;
+        is_hazardous: boolean;
+      }>('fetch_asteroid_by_id', {
+        neoId
+      });
+
+      this.showToast('Asteroid Found',
+        `${asteroid.name}${asteroid.is_hazardous ? ' ⚠️ HAZARDOUS' : ''}`,
+        asteroid.is_hazardous ? 'warning' : 'success');
+
+    } catch (error) {
+      console.error('ID search failed:', error);
+      this.showToast('Error', `Asteroid ${neoId} not found`, 'error');
+    }
+  }
+
+  // ===========================================================================
+  // MODAL HELPERS
+  // ===========================================================================
+
+  private toggleModal(modalId: string, show: boolean): void {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+      if (show) {
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+  }
+
+  private openSettingsModal(): void {
+    // Load saved settings into modal
+    const savedApiKey = localStorage.getItem('cosmorisk_api_key') || '';
+    const savedUnit = localStorage.getItem('cosmorisk_distance_unit') || 'au';
+    const savedSound = localStorage.getItem('cosmorisk_sound_enabled') !== 'false';
+    const saveKeyChecked = localStorage.getItem('cosmorisk_save_key') === 'true';
+
+    (document.getElementById('settings-api-key') as HTMLInputElement).value = savedApiKey;
+    (document.getElementById('settings-distance-unit') as HTMLSelectElement).value = savedUnit;
+    (document.getElementById('settings-sound-enabled') as HTMLInputElement).checked = savedSound;
+    (document.getElementById('settings-save-key') as HTMLInputElement).checked = saveKeyChecked;
+
+    // Also populate main API key field
+    if (savedApiKey) {
+      (document.getElementById('api-key') as HTMLInputElement).value = savedApiKey;
+    }
+
+    this.toggleModal('settings-modal', true);
+  }
+
+  private saveSettingsFromModal(): void {
+    const apiKey = (document.getElementById('settings-api-key') as HTMLInputElement).value;
+    const distanceUnit = (document.getElementById('settings-distance-unit') as HTMLSelectElement).value as 'au' | 'km' | 'ld';
+    const soundEnabled = (document.getElementById('settings-sound-enabled') as HTMLInputElement).checked;
+    const saveKey = (document.getElementById('settings-save-key') as HTMLInputElement).checked;
+
+    // Apply distance unit to class property
+    this.distanceUnit = distanceUnit;
+
+    // Save settings
+    localStorage.setItem('cosmorisk_distance_unit', distanceUnit);
+    localStorage.setItem('cosmorisk_sound_enabled', String(soundEnabled));
+    localStorage.setItem('cosmorisk_save_key', String(saveKey));
+
+    if (saveKey && apiKey) {
+      localStorage.setItem('cosmorisk_api_key', apiKey);
+    } else {
+      localStorage.removeItem('cosmorisk_api_key');
+    }
+
+    // Update main API key field
+    if (apiKey) {
+      (document.getElementById('api-key') as HTMLInputElement).value = apiKey;
+    }
+
+    this.showToast('Settings', 'Settings saved successfully!', 'success');
+    this.toggleModal('settings-modal', false);
+  }
+
+  /**
+   * Format distance value based on user's preferred unit
+   * @param valueInAU Distance value in Astronomical Units
+   * @returns Formatted string with unit
+   */
+  private formatDistance(valueInAU: number): string {
+    const AU_TO_KM = 149597870.7;
+    const AU_TO_LD = 389.17; // Lunar distances
+
+    switch (this.distanceUnit) {
+      case 'km':
+        const km = valueInAU * AU_TO_KM;
+        if (km > 1e6) {
+          return `${(km / 1e6).toFixed(2)} M km`;
+        } else if (km > 1000) {
+          return `${(km / 1000).toFixed(1)} K km`;
+        }
+        return `${km.toFixed(0)} km`;
+      case 'ld':
+        return `${(valueInAU * AU_TO_LD).toFixed(2)} LD`;
+      case 'au':
+      default:
+        return `${valueInAU.toFixed(6)} AU`;
     }
   }
 }

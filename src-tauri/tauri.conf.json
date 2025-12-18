@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Orbital Sentinel",
-  "version": "0.1.0",
+  "productName": "CosmoRisk",
+  "version": "2.0.1",
   "identifier": "com.cosmorisk.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Orbital Sentinel - NEO Tracker",
+        "title": "CosmoRisk - NEO Tracker & Deflection Simulator",
         "width": 1400,
         "height": 900,
         "decorations": true,
@@ -35,6 +35,16 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "publisher": "Mehmet Gümüş",
+    "copyright": "© 2025 Mehmet Gümüş. All rights reserved.",
+    "category": "Education",
+    "shortDescription": "Near-Earth Object Tracking & Deflection Simulator",
+    "longDescription": "CosmoRisk is a physics-accurate NEO tracking and deflection simulation application. Track real asteroids from NASA data, analyze impact risks, and simulate deflection missions.",
+    "windows": {
+      "certificateThumbprint": "FBA0F34D3439787A5B1767018899E1B510A14E34",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "digestAlgorithm": "sha256"
+    }
   }
 }

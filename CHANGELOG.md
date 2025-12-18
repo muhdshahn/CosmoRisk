@@ -1,11 +1,19 @@
 # Changelog
 
-All notable changes to Orbital Sentinel will be documented in this file.
+All notable changes to CosmoRisk will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [2.0.0] - 18.12.2025
+
+### Added - Branding & Polish
+- CosmoRisk branding throughout application
+- Animated loading screen with SVG logo
+- "Track. Analyze. Defend." tagline
+- About modal with developer info (Mehmet Gümüş)
+- Settings modal with API key storage
+- Distance unit preferences (AU/km/LD)
 
 ### Added - Visualization Enhancements
 - 3-layer Sun corona with animated glow (inner/middle/outer)
@@ -55,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Jupiter perturbation calculations
 - Mars perturbation calculations
 - Trajectory preview after deflection (200-point projection)
+- **Moon perturbation calculations** for close Earth approaches
+
+### Fixed - 18.12.2025 (v2.0.1)
+- **3D Orbit Visualization** - Orbits now correctly rendered in 3D using full Keplerian elements (inclination, RAAN, argument of perihelion)
+- **MOID Calculation** - Replaced simplified distance-based approximation with proper orbital element sampling (72×72 points)
+- **Trajectory Preview** - Added Jupiter gravitational perturbation and Solar Radiation Pressure to deflection preview
+- **Splash Screen** - Replaced emoji-based animation with elegant minimal SVG orbit animation
 
 ### Changed
 - Increased click detection threshold to 20 for better UX

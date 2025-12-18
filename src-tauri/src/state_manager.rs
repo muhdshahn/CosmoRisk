@@ -56,7 +56,7 @@ impl Default for AppState {
 
 pub fn start_simulation_loop(state: Arc<RwLock<SimulationState>>, is_running: Arc<RwLock<bool>>) {
     thread::spawn(move || {
-        let integrator = VelocityVerletIntegrator::new(3600.0); // 1 hour dt
+        let _integrator = VelocityVerletIntegrator::new(3600.0); // Reserved for future optimization
         let target_frame_time = Duration::from_millis(16); // ~60 FPS
 
         loop {
@@ -119,6 +119,11 @@ pub struct FrontendBody {
     pub velocity: [f64; 3], // km/s
     pub radius: f64,        // km
     pub is_hazardous: bool,
+    pub semi_major_axis_au: f64,           // For orbit visualization
+    pub eccentricity: f64,                 // For elliptical orbits
+    pub inclination_rad: f64,              // Orbital inclination (radians)
+    pub longitude_ascending_node_rad: f64, // RAAN Ω (radians)
+    pub argument_perihelion_rad: f64,      // Argument of perihelion ω (radians)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -140,6 +145,19 @@ impl SimulationState {
             .bodies
             .iter()
             .map(|b| {
+                // Extract orbital elements if available (for asteroids)
+                let (a_au, e, i, raan, omega) = if let Some(ref oe) = b.orbital_elements {
+                    (
+                        oe.semi_major_axis / AU, // Convert to AU
+                        oe.eccentricity,
+                        oe.inclination,
+                        oe.longitude_ascending_node,
+                        oe.argument_perihelion,
+                    )
+                } else {
+                    (1.0, 0.0, 0.0, 0.0, 0.0) // Defaults for planets/sun
+                };
+
                 FrontendBody {
                     id: b.id.clone(),
                     name: b.name.clone(),
@@ -156,6 +174,11 @@ impl SimulationState {
                     ],
                     radius: b.radius / 1000.0, // Convert to km
                     is_hazardous: false,       // Set from asteroid data
+                    semi_major_axis_au: a_au,
+                    eccentricity: e,
+                    inclination_rad: i,
+                    longitude_ascending_node_rad: raan,
+                    argument_perihelion_rad: omega,
                 }
             })
             .collect();
@@ -296,6 +319,20 @@ pub fn get_body_details(state: State<AppState>, body_id: String) -> Option<Front
     let sim = state.simulation.read();
     sim.bodies.iter().find(|b| b.id == body_id).map(|b| {
         use crate::physics_engine::AU;
+
+        // Extract orbital elements if available
+        let (a_au, e, i, raan, omega) = if let Some(ref oe) = b.orbital_elements {
+            (
+                oe.semi_major_axis / AU,
+                oe.eccentricity,
+                oe.inclination,
+                oe.longitude_ascending_node,
+                oe.argument_perihelion,
+            )
+        } else {
+            (1.0, 0.0, 0.0, 0.0, 0.0)
+        };
+
         FrontendBody {
             id: b.id.clone(),
             name: b.name.clone(),
@@ -312,6 +349,11 @@ pub fn get_body_details(state: State<AppState>, body_id: String) -> Option<Front
             ],
             radius: b.radius / 1000.0,
             is_hazardous: false,
+            semi_major_axis_au: a_au,
+            eccentricity: e,
+            inclination_rad: i,
+            longitude_ascending_node_rad: raan,
+            argument_perihelion_rad: omega,
         }
     })
 }
@@ -363,4 +405,177 @@ pub fn get_impact_prediction(state: State<AppState>, body_id: String) -> Option<
         time_to_closest_days: time_days,
         is_hazardous,
     })
+}
+
+// =============================================================================
+// MONTE CARLO IMPACT ANALYSIS
+// =============================================================================
+
+use crate::physics_engine::{monte_carlo_impact_probability, R_EARTH};
+
+#[derive(serde::Serialize)]
+pub struct MonteCarloResultFrontend {
+    pub num_runs: u32,
+    pub num_impacts: u32,
+    pub impact_probability: f64,
+    pub mean_moid_km: f64,
+    pub std_moid_km: f64,
+    pub min_moid_km: f64,
+    pub palermo_scale: f64,
+}
+
+/// Run Monte Carlo impact probability analysis
+#[tauri::command]
+pub fn run_monte_carlo(
+    state: State<AppState>,
+    body_id: String,
+    position_uncertainty_km: f64,
+    velocity_uncertainty_ms: f64,
+    num_runs: u32,
+    simulation_days: f64,
+) -> Result<MonteCarloResultFrontend, String> {
+    let sim = state.simulation.read();
+
+    let body = sim
+        .bodies
+        .iter()
+        .find(|b| b.id == body_id)
+        .ok_or("Asteroid not found")?;
+
+    // Convert uncertainties to meters
+    let pos_uncertainty = position_uncertainty_km * 1000.0;
+    let vel_uncertainty = velocity_uncertainty_ms;
+
+    let result = monte_carlo_impact_probability(
+        body,
+        pos_uncertainty,
+        vel_uncertainty,
+        num_runs.clamp(100, 10000),
+        simulation_days.clamp(1.0, 3650.0),
+        R_EARTH,
+    );
+
+    Ok(MonteCarloResultFrontend {
+        num_runs: result.num_runs,
+        num_impacts: result.num_impacts,
+        impact_probability: result.impact_probability,
+        mean_moid_km: result.mean_moid,
+        std_moid_km: result.std_moid,
+        min_moid_km: result.min_moid,
+        palermo_scale: result.palermo_scale,
+    })
+}
+
+// =============================================================================
+// GRAVITY TRACTOR DEFLECTION
+// =============================================================================
+
+/// Apply gravity tractor deflection over time
+#[tauri::command]
+pub fn apply_gravity_tractor(
+    state: State<AppState>,
+    body_id: String,
+    spacecraft_mass_kg: f64,
+    hover_distance_m: f64,
+    duration_days: f64,
+) -> Result<GravityTractorResult, String> {
+    let mut sim = state.simulation.write();
+
+    let body = sim
+        .bodies
+        .iter()
+        .find(|b| b.id == body_id)
+        .ok_or("Asteroid not found")?
+        .clone();
+
+    let integrator = VelocityVerletIntegrator::new(sim.dt);
+    let (accel, deflection_time) = integrator.calculate_gravity_tractor(
+        &body,
+        spacecraft_mass_kg.clamp(500.0, 50000.0),
+        hover_distance_m.clamp(50.0, 500.0),
+        0.0, // Lead angle
+    );
+
+    // Apply the acceleration as delta-v over duration
+    let duration_seconds = duration_days * 86400.0;
+    let delta_v = accel.scale(duration_seconds);
+
+    if let Some(body) = sim.bodies.iter_mut().find(|b| b.id == body_id) {
+        body.state.velocity = body.state.velocity.add(&delta_v);
+    }
+
+    Ok(GravityTractorResult {
+        delta_v_applied_ms: delta_v.magnitude(),
+        estimated_deflection_time_days: deflection_time,
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct GravityTractorResult {
+    pub delta_v_applied_ms: f64,
+    pub estimated_deflection_time_days: f64,
+}
+
+// =============================================================================
+// DATE-BASED ASTEROID SEARCH
+// =============================================================================
+
+/// Fetch asteroids by close approach date range
+#[tauri::command]
+pub async fn fetch_asteroids_by_date(
+    state: State<'_, AppState>,
+    start_date: String,
+    end_date: String,
+) -> Result<usize, String> {
+    let api_key = state.get_api_key().ok_or("API key not set")?;
+
+    let client = NeoWsClient::new(api_key);
+    let asteroids = client.fetch_feed(&start_date, &end_date).await?;
+
+    {
+        let mut sim = state.simulation.write();
+        for asteroid in &asteroids {
+            if !sim.bodies.iter().any(|b| b.id == asteroid.id) {
+                sim.add_asteroid(
+                    &asteroid.id,
+                    &asteroid.name,
+                    asteroid.orbital_elements.clone(),
+                    asteroid.estimated_diameter_m,
+                );
+            }
+        }
+    }
+
+    state.cache.set_asteroids(asteroids.clone());
+    Ok(asteroids.len())
+}
+
+// =============================================================================
+// SINGLE ASTEROID LOOKUP
+// =============================================================================
+
+/// Fetch a single asteroid by NASA NEO ID
+#[tauri::command]
+pub async fn fetch_asteroid_by_id(
+    state: State<'_, AppState>,
+    neo_id: String,
+) -> Result<ProcessedAsteroid, String> {
+    let api_key = state.get_api_key().ok_or("API key not set")?;
+
+    let client = NeoWsClient::new(api_key);
+    let asteroid = client.fetch_neo(&neo_id).await?;
+
+    {
+        let mut sim = state.simulation.write();
+        if !sim.bodies.iter().any(|b| b.id == asteroid.id) {
+            sim.add_asteroid(
+                &asteroid.id,
+                &asteroid.name,
+                asteroid.orbital_elements.clone(),
+                asteroid.estimated_diameter_m,
+            );
+        }
+    }
+
+    Ok(asteroid)
 }

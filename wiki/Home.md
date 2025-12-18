@@ -25,6 +25,9 @@ CosmoRisk is a **high-fidelity Near-Earth Object tracking and deflection simulat
 
 - Real NASA asteroid data via NeoWs API
 - N-Body gravity simulation with Velocity Verlet integrator
+- Moon/Jupiter/Mars gravitational perturbations
+- Accurate 3D Keplerian orbit visualization
+- MOID calculation with 72×72 point sampling
 - Deflection mission planning (DART-style kinetic impactor)
 - Torino Scale hazard assessment
 - Monte Carlo impact probability analysis

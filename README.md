@@ -1,16 +1,17 @@
-# Orbital Sentinel
+# CosmoRisk
 
 ## High-Fidelity NEO Defense Simulator
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/SpaceEngineerSS/CosmoRisk)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/SpaceEngineerSS/CosmoRisk/releases)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue.svg)](https://github.com/SpaceEngineerSS/CosmoRisk/releases)
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-Clean-green.svg)](https://www.virustotal.com/)
 
 ![CosmoRisk - NEO Defense Simulator](assets/demo.png)
 
-**Orbital Sentinel** is a state-of-the-art, physics-accurate Near-Earth Object (NEO) tracking and deflection simulator. Built with Rust for computational precision and Three.js for cinematic visualization.
+**CosmoRisk** is a state-of-the-art, physics-accurate Near-Earth Object (NEO) tracking and deflection simulator. Built with Rust for computational precision and Three.js for cinematic visualization.
 
 ---
 
@@ -35,7 +36,8 @@
 
 ### Analysis Tools
 - **Torino Scale** - 0-10 impact hazard classification
-- **MOID Calculator** - Minimum Orbit Intersection Distance
+- **MOID Calculator** - Proper orbital intersection distance using 72×72 point sampling
+- **3D Orbit Visualization** - Accurate Keplerian orbits with inclination, RAAN, and argument of perihelion
 - **Spectral Type Analysis** - C/S/M/X/V composition types
 - **Comparison Table** - Side-by-side asteroid data comparison
 - **Energy Conservation Chart** - Real-time energy drift monitoring
@@ -73,14 +75,19 @@ $$v(t+\Delta t) = v(t) + \frac{1}{2}[a(t) + a(t+\Delta t)]\Delta t$$
 | **Yarkovsky Effect** | $\frac{da}{dt} \approx \frac{\alpha}{D \cdot r^2}$ | Vokrouhlický et al. (2000) |
 | **Jupiter Perturbation** | N-body gravitational influence | Orbital mechanics |
 | **Mars Perturbation** | N-body gravitational influence | Orbital mechanics |
+| **Moon Perturbation** | N-body gravitational influence | Close Earth approaches |
 
 ### Physical Constants
 
 ```
-G = 6.67430×10⁻¹¹ m³/(kg·s²)
-AU = 1.495978707×10¹¹ m
-μ_Sun = 1.32712×10²⁰ m³/s²
-J₂_Earth = 1.08263×10⁻³
+G         = 6.67430×10⁻¹¹ m³/(kg·s²)      Gravitational constant
+AU        = 1.495978707×10¹¹ m            Astronomical Unit
+μ_Sun     = 1.327124×10²⁰ m³/s²           Sun's gravitational parameter
+μ_Earth   = 3.986004×10¹⁴ m³/s²           Earth's gravitational parameter
+μ_Moon    = 4.904869×10¹² m³/s²           Moon's gravitational parameter
+J₂_Earth  = 1.08263×10⁻³                   Earth oblateness coefficient
+R_Earth   = 6.378137×10⁶ m                Earth equatorial radius
+P_SRP     = 4.56×10⁻⁶ N/m²                Solar radiation pressure (1 AU)
 ```
 
 ---
@@ -108,6 +115,32 @@ npm run tauri dev
 # Build production executable
 npm run tauri build
 ```
+
+### 📥 Pre-Built Downloads (Windows)
+
+Download the latest release from [GitHub Releases](https://github.com/SpaceEngineerSS/CosmoRisk/releases).
+
+#### ⚠️ Windows SmartScreen Warning
+
+When running the `.exe` for the first time, Windows SmartScreen may show a warning because the application is new and not yet widely distributed. **This is normal for new software.**
+
+**To run the application:**
+1. Click **"More info"** on the warning dialog
+2. Click **"Run anyway"**
+
+![SmartScreen Bypass](assets/smartscreen-bypass.png)
+
+#### 🔒 Security Verification
+
+We take security seriously. You can verify the application is safe:
+
+| Verification | Link |
+|--------------|------|
+| **VirusTotal Scan** | [View Scan Results](https://www.virustotal.com/gui/file/29bedc4595de31cdcb0a80b3620438a215761b72fd641302bc94e01387f2df90) |
+| **Source Code** | [GitHub Repository](https://github.com/SpaceEngineerSS/CosmoRisk) |
+| **Publisher** | Mehmet Gümüş |
+
+> **Note:** The exe is signed with a self-signed certificate. File properties will show "Mehmet Gümüş" as the publisher.
 
 ---
 
@@ -185,7 +218,7 @@ If you use Orbital Sentinel in your research, please cite:
 @software{orbital_sentinel_2025,
   author = {Mehmet Gümüş},
   title = {Orbital Sentinel: High-Fidelity NEO Defense Simulator},
-  version = {2.0.0},
+  version = {2.0.1},
   year = {2025},
   url = {https://github.com/SpaceEngineerSS/CosmoRisk}
 }

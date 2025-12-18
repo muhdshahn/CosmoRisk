@@ -16,24 +16,24 @@
     content="High-fidelity Near-Earth Object tracking and deflection simulator with N-body physics, NASA API integration, and cinematic visualization." />
   <meta name="keywords"
     content="NEO, asteroid, simulation, orbital mechanics, planetary defense, NASA, Three.js, Tauri" />
-  <meta name="author" content="Orbital Sentinel Team" />
+  <meta name="author" content="Mehmet Gümüş" />
 
   <!-- Open Graph / Social -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Orbital Sentinel - NEO Defense Simulator" />
+  <meta property="og:title" content="CosmoRisk - NEO Defense Simulator" />
   <meta property="og:description" content="Track and deflect Near-Earth Objects with physics-accurate simulation." />
   <meta property="og:image" content="/assets/og-image.png" />
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Orbital Sentinel" />
+  <meta name="twitter:title" content="CosmoRisk" />
   <meta name="twitter:description" content="NEO Tracking & Deflection Simulator" />
 
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
 
-  <title>Orbital Sentinel - NEO Tracker</title>
+  <title>CosmoRisk - NEO Tracker & Deflection Simulator</title>
   <script type="module" src="/src/main.ts" defer></script>
 </head>
 
@@ -44,13 +44,56 @@
   <!-- Loading Screen -->
   <div id="loading-screen">
     <div class="loader-content">
-      <div class="spinner"></div>
-      <h1 class="loader-title">ORBITAL SENTINEL</h1>
-      <p class="loader-subtitle">Initializing Heliocentric Navigation System...</p>
+      <!-- Minimal Orbit Animation -->
+      <div class="splash-logo-container">
+        <svg class="splash-orbit-svg" viewBox="0 0 120 120" width="140" height="140">
+          <!-- Outer orbit ring -->
+          <ellipse class="orbit-path" cx="60" cy="60" rx="50" ry="20" fill="none" stroke="url(#orbitGradient)"
+            stroke-width="1.5" transform="rotate(-20 60 60)" />
+
+          <!-- Central core glow -->
+          <circle class="core-glow" cx="60" cy="60" r="12" fill="url(#coreGradient)" />
+          <circle class="core-inner" cx="60" cy="60" r="6" fill="#00d4ff" />
+
+          <!-- Orbiting dot -->
+          <circle class="orbit-dot" r="4" fill="#00d4ff">
+            <animateMotion dur="3s" repeatCount="indefinite">
+              <mpath href="#orbitMotionPath" />
+            </animateMotion>
+          </circle>
+
+          <!-- Motion path (invisible) -->
+          <ellipse id="orbitMotionPath" cx="60" cy="60" rx="50" ry="20" fill="none" stroke="none"
+            transform="rotate(-20 60 60)" />
+
+          <!-- Gradients -->
+          <defs>
+            <linearGradient id="orbitGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.2" />
+              <stop offset="50%" stop-color="#00d4ff" stop-opacity="0.8" />
+              <stop offset="100%" stop-color="#7b68ee" stop-opacity="0.2" />
+            </linearGradient>
+            <radialGradient id="coreGradient" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.4" />
+              <stop offset="100%" stop-color="#00d4ff" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <h1 class="loader-title">
+        <span class="title-cosmo">COSMO</span><span class="title-risk">RISK</span>
+      </h1>
+      <p class="loader-tagline">Track. Analyze. Defend.</p>
+      <p class="loader-subtitle">Near-Earth Object Defense Simulator</p>
+
+      <!-- Premium progress bar -->
       <div class="loader-progress">
         <div class="loader-bar" id="loader-bar"></div>
+        <div class="loader-bar-glow"></div>
       </div>
-      <p class="loader-status" id="loader-status">Loading physics engine...</p>
+      <p class="loader-status" id="loader-status">Initializing physics engine...</p>
+      <p class="loader-version">v2.0.1 • © 2025 Mehmet Gümüş</p>
     </div>
   </div>
 
@@ -75,8 +118,8 @@
           </svg>
         </div>
         <div class="logo-text">
-          <span class="logo-title">ORBITAL SENTINEL</span>
-          <span class="logo-subtitle">NEO Tracking System v1.0</span>
+          <span class="logo-title">COSMORISK</span>
+          <span class="logo-subtitle">NEO Defense Simulator v2.0</span>
         </div>
       </div>
 
@@ -106,6 +149,8 @@
       </div>
 
       <div class="status-section">
+        <button class="help-btn" id="btn-settings" title="Settings">⚙️</button>
+        <button class="help-btn" id="btn-about" title="About CosmoRisk">ℹ️</button>
         <button class="help-btn" id="btn-help" title="Keyboard Shortcuts (?)">?</button>
         <div class="status-indicator" id="status-indicator">
           <span class="status-dot paused"></span>
@@ -160,6 +205,32 @@
         <button class="action-btn secondary" id="btn-export" style="margin-top: 8px;">
           <span class="btn-icon">📥</span> Export Data
         </button>
+        <!-- Date Range Search -->
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border);">
+          <label class="slider-label" style="color: var(--color-accent);">📅 Search by Date</label>
+          <div class="input-group" style="margin-top: 8px;">
+            <label class="input-label">Start Date</label>
+            <input type="date" id="search-start-date" class="text-input">
+          </div>
+          <div class="input-group">
+            <label class="input-label">End Date</label>
+            <input type="date" id="search-end-date" class="text-input">
+          </div>
+          <button class="action-btn secondary" id="btn-fetch-by-date" style="margin-top: 8px;">
+            <span class="btn-icon">🔍</span> Search by Date
+          </button>
+        </div>
+        <!-- NEO ID Search -->
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border);">
+          <label class="slider-label" style="color: var(--color-accent);">🔢 Search by ID</label>
+          <div class="input-group" style="margin-top: 8px;">
+            <label class="input-label">NASA NEO ID</label>
+            <input type="text" id="neo-id-input" class="text-input" placeholder="e.g., 3542519">
+          </div>
+          <button class="action-btn secondary" id="btn-fetch-by-id" style="margin-top: 8px;">
+            <span class="btn-icon">🎯</span> Fetch Asteroid
+          </button>
+        </div>
       </div>
 
       <!-- Asteroid List -->
@@ -275,6 +346,36 @@
               <span class="btn-icon">💨</span> Apply Ion Beam
             </button>
           </div>
+          <!-- Gravity Tractor Deflection -->
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border);">
+            <label class="slider-label" style="color: var(--color-accent);">🛰️ Gravity Tractor</label>
+            <div class="input-group" style="margin-top: 8px;">
+              <label class="input-label">Spacecraft Mass (kg)</label>
+              <input type="number" id="gt-mass" class="number-input" value="5000" step="500" min="500" max="50000">
+            </div>
+            <div class="input-group">
+              <label class="input-label">Hover Distance (m)</label>
+              <input type="number" id="gt-distance" class="number-input" value="100" step="10" min="50" max="500">
+            </div>
+            <div class="input-group">
+              <label class="input-label">Duration (days)</label>
+              <input type="number" id="gt-duration" class="number-input" value="365" step="30" min="30" max="3650">
+            </div>
+            <button class="action-btn secondary" id="btn-apply-gravity-tractor" style="margin-top: 10px;">
+              <span class="btn-icon">🛰️</span> Apply Gravity Tractor
+            </button>
+            <div id="gt-result" class="gt-result hidden"
+              style="margin-top: 8px; padding: 8px; background: var(--color-surface); border-radius: 4px;">
+              <div class="info-row">
+                <span class="info-label">Δv Applied</span>
+                <span class="info-value" id="gt-delta-v">-</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Est. Deflection Time</span>
+                <span class="info-value" id="gt-time">-</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="deflection-placeholder" id="deflection-placeholder">
           <p>Select an asteroid to enable deflection controls</p>
@@ -314,6 +415,44 @@
           <div class="info-row">
             <span class="info-label">MOID (LD)</span>
             <span class="info-value" id="moid-ld-value">-</span>
+          </div>
+        </div>
+        <!-- Monte Carlo Analysis -->
+        <div id="monte-carlo-section" class="monte-carlo-controls hidden">
+          <h4 style="margin: 12px 0 8px; color: var(--color-accent);">🎲 Monte Carlo Analysis</h4>
+          <div class="input-group">
+            <label class="input-label">Position Uncertainty (km)</label>
+            <input type="number" id="mc-pos-uncertainty" class="number-input" value="1000" step="100" min="100">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Velocity Uncertainty (m/s)</label>
+            <input type="number" id="mc-vel-uncertainty" class="number-input" value="10" step="1" min="1">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Simulation Days</label>
+            <input type="number" id="mc-days" class="number-input" value="365" step="30" min="30" max="3650">
+          </div>
+          <button class="action-btn" id="btn-run-monte-carlo">
+            <span class="btn-icon">🎲</span> Run Monte Carlo (1000 runs)
+          </button>
+          <!-- Monte Carlo Results -->
+          <div id="mc-results" class="mc-results hidden">
+            <div class="info-row">
+              <span class="info-label">Impact Probability</span>
+              <span class="info-value" id="mc-probability">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Mean MOID (km)</span>
+              <span class="info-value" id="mc-mean-moid">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Min MOID (km)</span>
+              <span class="info-value" id="mc-min-moid">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Palermo Scale</span>
+              <span class="info-value" id="mc-palermo">-</span>
+            </div>
           </div>
         </div>
       </div>
@@ -665,6 +804,102 @@
       <span>🎯</span>
       <span>Analysis</span>
     </button>
+  </div>
+
+  <!-- About Modal -->
+  <div id="about-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2>🚀 About CosmoRisk</h2>
+        <button class="modal-close" id="close-about">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div style="font-size: 48px; margin-bottom: 10px;">🌌</div>
+          <h3 style="color: var(--color-accent-primary); margin-bottom: 5px;">CosmoRisk</h3>
+          <p style="color: var(--color-text-dim);">NEO Defense Simulator</p>
+          <p style="font-size: 1.2rem; color: var(--color-accent-secondary);">v2.0.1</p>
+        </div>
+        <div class="info-display" style="margin-bottom: 15px;">
+          <div class="info-row">
+            <span class="info-label">Developer</span>
+            <span class="info-value">Mehmet Gümüş</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">License</span>
+            <span class="info-value">MIT</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Built with</span>
+            <span class="info-value">Tauri + Rust + Three.js</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Physics Engine</span>
+            <span class="info-value">Velocity Verlet N-Body</span>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <a href="https://github.com/SpaceEngineerSS/CosmoRisk" target="_blank" class="action-btn secondary"
+            style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; width: auto; padding: 8px 16px;">
+            <span class="btn-icon">🐙</span> GitHub
+          </a>
+          <a href="https://spacegumus.com.tr" target="_blank" class="action-btn secondary"
+            style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; width: auto; padding: 8px 16px;">
+            <span class="btn-icon">🌐</span> Website
+          </a>
+        </div>
+        <p style="text-align: center; margin-top: 15px; color: var(--color-text-dim); font-size: 0.8rem;">
+          © 2025 Mehmet Gümüş. All rights reserved.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>⚙️ Settings</h2>
+        <button class="modal-close" id="close-settings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group" style="margin-bottom: 15px;">
+          <label class="input-label">NASA API Key</label>
+          <input type="password" id="settings-api-key" class="text-input" placeholder="Enter your NASA API key...">
+          <p style="font-size: 0.75rem; color: var(--color-text-dim); margin-top: 5px;">
+            Get a free key at <a href="https://api.nasa.gov" target="_blank"
+              style="color: var(--color-accent-primary);">api.nasa.gov</a>
+          </p>
+        </div>
+        <div class="checkbox-group" style="margin-bottom: 15px;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="settings-save-key">
+            <span class="checkbox-custom"></span>
+            Remember API Key
+          </label>
+        </div>
+        <div class="input-group" style="margin-bottom: 15px;">
+          <label class="input-label">Distance Unit</label>
+          <select id="settings-distance-unit" class="asteroid-sort">
+            <option value="au">Astronomical Units (AU)</option>
+            <option value="km">Kilometers (km)</option>
+            <option value="ld">Lunar Distances (LD)</option>
+          </select>
+        </div>
+        <div class="checkbox-group" style="margin-bottom: 15px;">
+          <label class="checkbox-label">
+            <input type="checkbox" id="settings-sound-enabled" checked>
+            <span class="checkbox-custom"></span>
+            Enable Sound Effects
+          </label>
+        </div>
+        <button class="action-btn" id="btn-save-settings" style="margin-top: 10px;">
+          <span class="btn-icon">💾</span> Save Settings
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Toast Notification Container -->

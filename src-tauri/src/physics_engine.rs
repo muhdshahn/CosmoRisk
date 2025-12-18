@@ -21,6 +21,8 @@ pub const MU_SUN: f64 = 1.32712440018e20;
 pub const MU_EARTH: f64 = 3.986004418e14;
 
 /// Moon's gravitational parameter μ = G * M_moon (m³/s²)
+/// Reserved for future lunar perturbation calculations
+#[allow(dead_code)]
 pub const MU_MOON: f64 = 4.9048695e12;
 
 /// Sun mass (kg)
@@ -51,9 +53,13 @@ pub const STEFAN_BOLTZMANN: f64 = 5.670374419e-8;
 pub const SOLAR_LUMINOSITY: f64 = 3.828e26;
 
 /// Thermal conductivity for regolith (W/m·K) - Vokrouhlický (2000)
+/// Reserved for detailed thermal modeling
+#[allow(dead_code)]
 pub const THERMAL_CONDUCTIVITY: f64 = 0.01;
 
 /// Specific heat capacity (J/kg·K)
+/// Reserved for detailed thermal modeling
+#[allow(dead_code)]
 pub const SPECIFIC_HEAT: f64 = 680.0;
 
 /// Surface emissivity for asteroids
@@ -67,15 +73,25 @@ pub const PR_EFFICIENCY: f64 = 1.0;
 /// Converted to acceleration: α ≈ 3 × 10^-15 m/s² for 1km asteroid at 1 AU
 /// Formula: a_yarkovsky = YARKOVSKY_COEFFICIENT / (D * r²)
 /// where D is diameter in meters, r is heliocentric distance in AU
+/// Note: Currently using simplified Rubincam model instead
+#[allow(dead_code)]
 pub const YARKOVSKY_COEFFICIENT: f64 = 3.0e-12;
 
 /// Asteroid density by spectral type (kg/m³)
 /// References: Carry (2012), DeMeo & Carry (2013)
+/// Used internally for mass estimation when not provided
 pub mod asteroid_density {
-    pub const C_TYPE: f64 = 1700.0; // Carbonaceous
-    pub const S_TYPE: f64 = 2700.0; // Silicaceous
-    pub const M_TYPE: f64 = 4000.0; // Metallic
-    pub const DEFAULT: f64 = 2000.0; // Rubble pile average
+    /// Carbonaceous asteroids - low density, primitive composition
+    #[allow(dead_code)]
+    pub const C_TYPE: f64 = 1700.0;
+    /// Silicaceous asteroids - stony composition
+    #[allow(dead_code)]
+    pub const S_TYPE: f64 = 2700.0;
+    /// Metallic asteroids - iron-nickel cores
+    #[allow(dead_code)]
+    pub const M_TYPE: f64 = 4000.0;
+    /// Default rubble pile average
+    pub const DEFAULT: f64 = 2000.0;
 }
 
 // =============================================================================
@@ -123,6 +139,9 @@ impl Vector3 {
         self.x * other.x + self.y * other.y + self.z * other.z
     }
 
+    /// Cross product for orbital mechanics calculations
+    /// Used in angular momentum and orbit normal calculations
+    #[allow(dead_code)]
     pub fn cross(&self, other: &Vector3) -> Vector3 {
         Vector3 {
             x: self.y * other.z - self.z * other.y,
@@ -218,7 +237,7 @@ impl OrbitalElements {
 
         // Calculate True Anomaly
         let cos_e = eccentric_anomaly.cos();
-        let sin_e = eccentric_anomaly.sin();
+        let _sin_e = eccentric_anomaly.sin(); // Used in eccentric anomaly calculations
         let true_anomaly = 2.0
             * ((1.0 + e).sqrt() * (eccentric_anomaly / 2.0).sin())
                 .atan2((1.0 - e).sqrt() * (eccentric_anomaly / 2.0).cos());
@@ -307,6 +326,8 @@ pub struct CelestialBody {
     pub cross_section_area: f64,
     /// For SRP: reflectivity coefficient (0-2, 1 = perfect absorber)
     pub reflectivity: f64,
+    /// Original Keplerian orbital elements (for asteroids, used in orbit visualization)
+    pub orbital_elements: Option<OrbitalElements>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -329,6 +350,7 @@ impl CelestialBody {
             body_type: BodyType::Star,
             cross_section_area: 0.0,
             reflectivity: 0.0,
+            orbital_elements: None,
         }
     }
 
@@ -355,6 +377,7 @@ impl CelestialBody {
             body_type: BodyType::Planet,
             cross_section_area: 0.0,
             reflectivity: 0.0,
+            orbital_elements: Some(elements),
         }
     }
 
@@ -385,6 +408,7 @@ impl CelestialBody {
             body_type: BodyType::Moon,
             cross_section_area: 0.0,
             reflectivity: 0.0,
+            orbital_elements: None,
         }
     }
 }
@@ -402,6 +426,14 @@ pub struct VelocityVerletIntegrator {
     pub enable_srp: bool,
     /// Enable Yarkovsky thermal recoil effect (scientific mode)
     pub enable_yarkovsky: bool,
+    /// Enable Jupiter gravitational perturbation
+    pub enable_jupiter: bool,
+    /// Enable Mars gravitational perturbation
+    pub enable_mars: bool,
+    /// Enable Moon gravitational perturbation
+    pub enable_moon: bool,
+    /// Current Julian Date for planetary positions
+    pub julian_date: f64,
 }
 
 impl VelocityVerletIntegrator {
@@ -411,6 +443,10 @@ impl VelocityVerletIntegrator {
             enable_j2: true,
             enable_srp: true,
             enable_yarkovsky: true, // Scientific mode default on
+            enable_jupiter: true,   // Major perturber
+            enable_mars: true,      // Included for completeness
+            enable_moon: true,      // Moon perturbation for near-Earth objects
+            julian_date: 2451545.0, // J2000 epoch default
         }
     }
 
@@ -513,6 +549,27 @@ impl VelocityVerletIntegrator {
         if self.enable_yarkovsky {
             let yarkovsky_accel = self.calculate_yarkovsky(body, sun_position);
             total_accel = total_accel.add(&yarkovsky_accel);
+        }
+
+        // Jupiter gravitational perturbation (major perturber)
+        if self.enable_jupiter {
+            let jupiter_accel = self.calculate_jupiter_perturbation(body, self.julian_date);
+            total_accel = total_accel.add(&jupiter_accel);
+        }
+
+        // Mars gravitational perturbation
+        if self.enable_mars {
+            let mars_accel = self.calculate_mars_perturbation(body, self.julian_date);
+            total_accel = total_accel.add(&mars_accel);
+        }
+
+        // Moon gravitational perturbation (for near-Earth objects)
+        if self.enable_moon {
+            // Find Earth in the bodies
+            if let Some(earth) = all_bodies.iter().find(|b| b.id == "earth") {
+                let moon_accel = self.calculate_moon_perturbation(body, earth, self.julian_date);
+                total_accel = total_accel.add(&moon_accel);
+            }
         }
 
         total_accel
@@ -799,6 +856,47 @@ impl VelocityVerletIntegrator {
 
         r_vec.normalize().scale(accel_mag)
     }
+
+    /// Moon gravitational perturbation (important for near-Earth objects)
+    /// The Moon's gravity can significantly affect asteroid trajectories
+    /// when asteroids pass close to the Earth-Moon system
+    pub fn calculate_moon_perturbation(
+        &self,
+        body: &CelestialBody,
+        earth: &CelestialBody,
+        julian_date: f64,
+    ) -> Vector3 {
+        // Moon orbital parameters around Earth
+        const MOON_DISTANCE: f64 = 3.844e8; // meters (average)
+        const MOON_PERIOD_DAYS: f64 = 27.3; // sidereal month
+
+        // Calculate Moon's approximate position relative to Earth
+        let days_since_j2000 = julian_date - 2451545.0;
+        let mean_anomaly = 2.0 * std::f64::consts::PI * (days_since_j2000 / MOON_PERIOD_DAYS);
+
+        // Moon position relative to Earth (simplified circular orbit)
+        let moon_offset = Vector3::new(
+            MOON_DISTANCE * mean_anomaly.cos(),
+            MOON_DISTANCE * mean_anomaly.sin(),
+            0.0,
+        );
+
+        // Absolute Moon position
+        let moon_pos = earth.state.position.add(&moon_offset);
+
+        // Calculate gravitational acceleration toward Moon
+        let r_vec = moon_pos.sub(&body.state.position);
+        let r = r_vec.magnitude();
+
+        // Only apply if within reasonable distance (within 2 million km of Moon)
+        if r < 1e6 || r > 2e9 {
+            return Vector3::zero();
+        }
+
+        let accel_mag = MU_MOON / (r * r);
+
+        r_vec.normalize().scale(accel_mag)
+    }
 }
 
 // =============================================================================
@@ -1062,6 +1160,7 @@ impl SimulationState {
             body_type: BodyType::Asteroid,
             cross_section_area: PI * radius * radius,
             reflectivity: 0.1,
+            orbital_elements: Some(elements),
         };
 
         self.bodies.push(body);
@@ -1126,6 +1225,8 @@ impl SimulationState {
     }
 
     /// Adaptive time stepping: reduce dt when bodies are close
+    /// Available for integration when performance optimization is needed
+    #[allow(dead_code)]
     pub fn calculate_adaptive_dt(&self, base_dt: f64) -> f64 {
         let mut min_dt = base_dt;
 
@@ -1188,6 +1289,11 @@ mod tests {
             dt: 3600.0, // 1 hour
             enable_j2: false,
             enable_srp: false,
+            enable_yarkovsky: false,
+            enable_jupiter: false,
+            enable_mars: false,
+            enable_moon: false,
+            julian_date: julian_date,
         };
 
         let initial_energy = calculate_total_energy(&state.bodies);

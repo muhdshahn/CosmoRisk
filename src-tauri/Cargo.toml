@@ -1,8 +1,8 @@
 [package]
-name = "tauri-app"
-version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+name = "cosmorisk"
+version = "2.0.1"
+description = "CosmoRisk - High-Fidelity NEO Defense Simulator"
+authors = ["Mehmet Gümüş <contact@spacegumus.com.tr>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

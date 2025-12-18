@@ -35,10 +35,20 @@ Where:
 |--------|-------------|
 | Solar Gravity | Central force from Sun |
 | Earth Gravity | For lunar/geocentric objects |
+| Moon Gravity | Close Earth approach perturbations |
 | Jupiter Perturbation | Major asteroid belt influence |
 | Mars Perturbation | Inner solar system effects |
 | J2 Oblateness | Earth's equatorial bulge |
 | Solar Radiation Pressure | Light momentum transfer |
+| Yarkovsky Effect | Thermal recoil from anisotropic emission |
+| Poynting-Robertson | Radiation drag on small particles |
+
+## MOID Calculation
+
+**Minimum Orbit Intersection Distance** is calculated using:
+- 72×72 point orbital sampling
+- Full Keplerian rotation matrices (Ω, i, ω)
+- Comparison between asteroid and Earth orbits
 
 ## Constants
 

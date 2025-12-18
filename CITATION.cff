@@ -10,13 +10,13 @@ repository-code: "https://github.com/SpaceEngineerSS/CosmoRisk"
 url: "https://spacegumus.com.tr"
 abstract: >-
   A physics-accurate Near-Earth Object (NEO) tracking and deflection simulator
-  featuring N-Body gravity with Jupiter/Mars perturbations, Velocity Verlet integration,
+  featuring N-Body gravity with Jupiter/Mars/Moon perturbations, Velocity Verlet integration,
   NASA NeoWs API integration, kinetic impactor and ion beam deflection methods,
   Monte Carlo impact probability analysis, and advanced perturbation effects
   including Yarkovsky thermal recoil, J2 oblateness, and Solar Radiation Pressure.
-  Features include 3D visualization with Three.js, Torino Scale assessment,
-  MOID calculator, asteroid comparison table, mobile touch gestures, and
-  educational content including tutorials and glossary.
+  Features accurate 3D Keplerian orbit visualization with inclination/RAAN/argument of perihelion,
+  MOID calculator using 72×72 point orbital sampling, Torino Scale assessment,
+  asteroid comparison table, and educational content including tutorials and glossary.
 keywords:
   - near-earth-objects
   - asteroid-deflection
@@ -24,11 +24,13 @@ keywords:
   - planetary-defense
   - orbital-mechanics
   - physics-simulation
+  - keplerian-orbits
+  - moid-calculation
   - tauri
   - rust
   - three.js
   - monte-carlo
   - torino-scale
 license: MIT
-version: 2.0.0
+version: 2.0.1
 date-released: "2025-12-18"

@@ -21,8 +21,14 @@ Yes! CosmoRisk is free and open source under the MIT license.
 All data comes from NASA's NeoWs (Near Earth Object Web Service) API, which is maintained by NASA's Jet Propulsion Laboratory.
 
 ### How accurate is the simulation?
-The simulation uses proper N-body gravitational physics and Velocity Verlet integration. However:
-- Small perturbations may be simplified
+The simulation uses:
+- N-body gravitational physics (Sun, Earth, Moon, Jupiter, Mars)
+- Velocity Verlet symplectic integration
+- Full 3D Keplerian orbit visualization
+- MOID calculation with 72×72 point orbital sampling
+- Perturbations: J2, SRP, Yarkovsky, Poynting-Robertson
+
+**However:**
 - Very long-term predictions have inherent uncertainty
 - This is an educational tool, not for operational use
 

@@ -18,7 +18,7 @@ Bu döküman, Orbital Sentinel uygulamasının tam açıklamasını ve gelecek g
 | **Frontend** | TypeScript + Three.js |
 | **Veri Kaynağı** | NASA NeoWs API |
 | **FPS** | 53-62 (10,000+ asteroid ile) |
-| **Versiyon** | 2.0.0 |
+| **Versiyon** | 2.0.1 |
 
 ---
 
@@ -56,6 +56,7 @@ CosmoRisk/
 | **Yarkovsky Effect** | Termal radyasyon kuvveti |
 | **Poynting-Robertson** | Güneş radyasyonu sürüklenmesi |
 | **Jupiter/Mars Perturbation** | Dev gezegen etkileri |
+| **Moon Perturbation** | Ay'ın yakın geçiş asteroidlerine etkisi |
 | **Monte Carlo Impact** | İstatistiksel çarpma olasılığı analizi |
 
 ### Fiziksel Sabitler
@@ -80,7 +81,7 @@ J2_EARTH = 1.08263e-3 // Earth oblateness coefficient
 ### Sağ Panel - Bilgi & Analiz
 - **Selected Object**: Seçili cismin pozisyon, hız, yarıçap bilgileri
 - **Torino Scale**: 0-10 tehlike seviyesi görselleştirmesi
-- **MOID Calculator**: Minimum Orbit Intersection Distance
+- **MOID Calculator**: Orbital kesişim mesafesi (72×72 nokta örnekleme)
 - **Asteroid Info**: Spektral tip, kütle, yoğunluk
 - **Deflection Control**: 
   - Kinetic Impactor: Δv XYZ ile anlık itki
