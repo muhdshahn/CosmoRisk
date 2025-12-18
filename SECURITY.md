@@ -14,7 +14,7 @@ If you discover a security vulnerability in CosmoRisk, please report it responsi
 ### How to Report
 
 1. **DO NOT** create a public GitHub issue for security vulnerabilities
-2. Send an email to: **security@spacegumus.com.tr**
+2. Send an email to: **spacegumus@gmail.com**
 3. Include the following information:
    - Description of the vulnerability
    - Steps to reproduce
@@ -43,7 +43,7 @@ This application:
 
 ## Contact
 
-- Security issues: security@spacegumus.com.tr
+- Security issues: spacegumus@gmail.com
 - General inquiries: [spacegumus.com.tr](https://spacegumus.com.tr)
 
 ---
