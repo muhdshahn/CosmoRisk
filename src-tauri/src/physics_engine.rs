@@ -72,9 +72,9 @@ pub const YARKOVSKY_COEFFICIENT: f64 = 3.0e-12;
 /// Asteroid density by spectral type (kg/m³)
 /// References: Carry (2012), DeMeo & Carry (2013)
 pub mod asteroid_density {
-    pub const C_TYPE: f64 = 1700.0;  // Carbonaceous
-    pub const S_TYPE: f64 = 2700.0;  // Silicaceous  
-    pub const M_TYPE: f64 = 4000.0;  // Metallic
+    pub const C_TYPE: f64 = 1700.0; // Carbonaceous
+    pub const S_TYPE: f64 = 2700.0; // Silicaceous
+    pub const M_TYPE: f64 = 4000.0; // Metallic
     pub const DEFAULT: f64 = 2000.0; // Rubble pile average
 }
 
@@ -95,7 +95,11 @@ impl Vector3 {
     }
 
     pub fn zero() -> Self {
-        Self { x: 0.0, y: 0.0, z: 0.0 }
+        Self {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 
     pub fn magnitude(&self) -> f64 {
@@ -158,8 +162,8 @@ impl Vector3 {
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct StateVector {
-    pub position: Vector3,  // meters (SI)
-    pub velocity: Vector3,  // m/s (SI)
+    pub position: Vector3, // meters (SI)
+    pub velocity: Vector3, // m/s (SI)
 }
 
 impl StateVector {
@@ -206,7 +210,7 @@ impl OrbitalElements {
         let e = self.eccentricity;
         let i = self.inclination;
         let omega_big = self.longitude_ascending_node; // Ω
-        let omega_small = self.argument_perihelion;     // ω
+        let omega_small = self.argument_perihelion; // ω
         let m = self.mean_anomaly;
 
         // Solve Kepler's equation to get Eccentric Anomaly (Newton-Raphson)
@@ -215,8 +219,9 @@ impl OrbitalElements {
         // Calculate True Anomaly
         let cos_e = eccentric_anomaly.cos();
         let sin_e = eccentric_anomaly.sin();
-        let true_anomaly = 2.0 * ((1.0 + e).sqrt() * (eccentric_anomaly / 2.0).sin())
-            .atan2((1.0 - e).sqrt() * (eccentric_anomaly / 2.0).cos());
+        let true_anomaly = 2.0
+            * ((1.0 + e).sqrt() * (eccentric_anomaly / 2.0).sin())
+                .atan2((1.0 - e).sqrt() * (eccentric_anomaly / 2.0).cos());
 
         // Distance from focus
         let r = a * (1.0 - e * cos_e);
@@ -294,8 +299,8 @@ fn solve_kepler_equation(mean_anomaly: f64, eccentricity: f64) -> f64 {
 pub struct CelestialBody {
     pub id: String,
     pub name: String,
-    pub mass: f64,             // kg
-    pub radius: f64,           // meters
+    pub mass: f64,   // kg
+    pub radius: f64, // meters
     pub state: StateVector,
     pub body_type: BodyType,
     /// For SRP calculation: cross-sectional area (m²)
@@ -415,7 +420,7 @@ impl VelocityVerletIntegrator {
     pub fn step(&self, bodies: &mut [CelestialBody], sun_position: &Vector3) {
         let n = bodies.len();
         let dt = self.dt;
-        let _dt_half = dt * 0.5;  // Reserved for future use
+        let _dt_half = dt * 0.5; // Reserved for future use
         let dt_sq_half = dt * dt * 0.5;
 
         // Store initial accelerations
@@ -437,7 +442,9 @@ impl VelocityVerletIntegrator {
             let v = &bodies[i].state.velocity;
             let a = &accelerations[i];
 
-            bodies[i].state.position = bodies[i].state.position
+            bodies[i].state.position = bodies[i]
+                .state
+                .position
                 .add(&v.scale(dt))
                 .add(&a.scale(dt_sq_half));
         }
@@ -584,11 +591,17 @@ impl VelocityVerletIntegrator {
 
         // Calculate subsolar temperature at distance r
         // T = (L_sun / (16 * π * σ * r²))^0.25
-        let subsolar_temp = (SOLAR_LUMINOSITY / (16.0 * std::f64::consts::PI * STEFAN_BOLTZMANN * r * r)).powf(0.25);
+        let subsolar_temp = (SOLAR_LUMINOSITY
+            / (16.0 * std::f64::consts::PI * STEFAN_BOLTZMANN * r * r))
+            .powf(0.25);
 
         // Estimate density from body mass and radius
         let volume = (4.0 / 3.0) * std::f64::consts::PI * body.radius.powi(3);
-        let density = if volume > 0.0 { body.mass / volume } else { asteroid_density::DEFAULT };
+        let density = if volume > 0.0 {
+            body.mass / volume
+        } else {
+            asteroid_density::DEFAULT
+        };
         let density = density.max(1000.0).min(8000.0); // Clamp to realistic range
 
         // Yarkovsky acceleration magnitude (simplified Rubincam model)
@@ -599,7 +612,7 @@ impl VelocityVerletIntegrator {
         // Apply in tangential direction (prograde orbit = outward drift)
         // This causes secular drift in semi-major axis
         let radial = r_vec.normalize();
-        
+
         // Tangential direction: perpendicular to radial in orbital plane
         let tangent = Vector3::new(-radial.y, radial.x, 0.0).normalize();
 
@@ -610,7 +623,11 @@ impl VelocityVerletIntegrator {
     /// Reference: Burns, Lamy & Soter (1979)
     /// Causes orbital decay due to velocity-dependent radiation force
     #[allow(dead_code)]
-    fn calculate_poynting_robertson(&self, body: &CelestialBody, sun_position: &Vector3) -> Vector3 {
+    fn calculate_poynting_robertson(
+        &self,
+        body: &CelestialBody,
+        sun_position: &Vector3,
+    ) -> Vector3 {
         // Only meaningful for very small particles (< 1 meter radius)
         if body.radius > 1.0 {
             return Vector3::zero();
@@ -618,7 +635,7 @@ impl VelocityVerletIntegrator {
 
         let r_vec = body.state.position.sub(sun_position);
         let r = r_vec.magnitude();
-        
+
         if r < 1e-10 {
             return Vector3::zero();
         }
@@ -626,11 +643,15 @@ impl VelocityVerletIntegrator {
         // Calculate β ratio: radiation pressure / gravity
         // β = (3 * L * Q) / (16 * π * G * M * c * ρ * s)
         let volume = (4.0 / 3.0) * std::f64::consts::PI * body.radius.powi(3);
-        let density = if volume > 0.0 { body.mass / volume } else { asteroid_density::DEFAULT };
+        let density = if volume > 0.0 {
+            body.mass / volume
+        } else {
+            asteroid_density::DEFAULT
+        };
         let particle_size = body.radius * 2.0;
-        
-        let beta = (3.0 * SOLAR_LUMINOSITY * PR_EFFICIENCY) / 
-            (16.0 * std::f64::consts::PI * G * MASS_SUN * C * density * particle_size);
+
+        let beta = (3.0 * SOLAR_LUMINOSITY * PR_EFFICIENCY)
+            / (16.0 * std::f64::consts::PI * G * MASS_SUN * C * density * particle_size);
 
         // Radial component (radiation pressure outward)
         let radial = r_vec.normalize();
@@ -642,11 +663,11 @@ impl VelocityVerletIntegrator {
         let v_radial = radial.scale(v.dot(&radial));
         let v_tangent = v.sub(&v_radial);
         let v_tangent_mag = v_tangent.magnitude();
-        
+
         if v_tangent_mag < 1e-10 {
             return radial.scale(rad_accel);
         }
-        
+
         let pr_drag_mag = beta * MU_SUN * v_tangent_mag / (r2 * C);
         let pr_drag = v_tangent.normalize().scale(-pr_drag_mag);
 
@@ -661,33 +682,33 @@ impl VelocityVerletIntegrator {
     pub fn calculate_gravity_tractor(
         &self,
         asteroid: &CelestialBody,
-        spacecraft_mass: f64,      // kg (typically 1000-20000 kg)
-        hover_distance: f64,       // meters from asteroid surface
-        lead_angle: f64,           // radians (angle ahead of asteroid along orbit)
+        spacecraft_mass: f64, // kg (typically 1000-20000 kg)
+        hover_distance: f64,  // meters from asteroid surface
+        lead_angle: f64,      // radians (angle ahead of asteroid along orbit)
     ) -> (Vector3, f64) {
         // Total distance from asteroid center
         let standoff = asteroid.radius + hover_distance;
-        
+
         // Gravitational force: F = G * m_asteroid * m_spacecraft / r²
         // This force acts on the asteroid as well (Newton's 3rd law)
         let _force_mag = G * asteroid.mass * spacecraft_mass / (standoff * standoff);
-        
+
         // Acceleration on asteroid: a = F / m_asteroid = G * m_spacecraft / r²
         let accel_mag = G * spacecraft_mass / (standoff * standoff);
-        
+
         // Direction: spacecraft leads asteroid in orbit, so the force
         // pulls asteroid slightly forward (increases orbital energy)
         // Convert asteroid velocity direction to acceleration direction
         let v_norm = asteroid.state.velocity.normalize();
-        
+
         // Apply lead angle rotation (simplified - just scale down based on angle)
         let direction = v_norm.scale(lead_angle.cos());
-        
+
         // Time to deflect by 1 Earth radius at different lead times
         // Δx = 0.5 * a * t² → t = sqrt(2*Δx/a)
         let earth_radius = 6.371e6; // meters
         let deflection_time_days = (2.0 * earth_radius / accel_mag).sqrt() / 86400.0;
-        
+
         (direction.scale(accel_mag), deflection_time_days)
     }
 
@@ -708,45 +729,42 @@ impl VelocityVerletIntegrator {
         // Calculate Jupiter's approximate position
         let days_since_j2000 = julian_date - 2451545.0;
         let mean_anomaly = 2.0 * std::f64::consts::PI * (days_since_j2000 / JUPITER_PERIOD_DAYS);
-        
+
         // Simplified eccentric anomaly (first-order approximation)
         let ecc_anomaly = mean_anomaly + JUPITER_ECCENTRICITY * mean_anomaly.sin();
-        
+
         // True anomaly
-        let true_anomaly = 2.0 * ((1.0 + JUPITER_ECCENTRICITY).sqrt() * (ecc_anomaly / 2.0).tan())
-            .atan2((1.0 - JUPITER_ECCENTRICITY).sqrt());
-        
+        let true_anomaly = 2.0
+            * ((1.0 + JUPITER_ECCENTRICITY).sqrt() * (ecc_anomaly / 2.0).tan())
+                .atan2((1.0 - JUPITER_ECCENTRICITY).sqrt());
+
         // Orbital radius
-        let r_jupiter = JUPITER_SEMI_MAJOR * (1.0 - JUPITER_ECCENTRICITY * JUPITER_ECCENTRICITY) 
+        let r_jupiter = JUPITER_SEMI_MAJOR * (1.0 - JUPITER_ECCENTRICITY * JUPITER_ECCENTRICITY)
             / (1.0 + JUPITER_ECCENTRICITY * true_anomaly.cos());
-        
+
         // Jupiter position (in ecliptic plane for simplicity)
         let jupiter_pos = Vector3::new(
             r_jupiter * true_anomaly.cos(),
             r_jupiter * true_anomaly.sin(),
-            0.0
+            0.0,
         );
 
         // Calculate gravitational acceleration toward Jupiter
         let r_vec = jupiter_pos.sub(&body.state.position);
         let r = r_vec.magnitude();
-        
+
         if r < 1e6 {
             return Vector3::zero();
         }
 
         let mu_jupiter = G * JUPITER_MASS;
         let accel_mag = mu_jupiter / (r * r);
-        
+
         r_vec.normalize().scale(accel_mag)
     }
 
     /// Mars gravitational perturbation (smaller effect, but included for completeness)
-    pub fn calculate_mars_perturbation(
-        &self,
-        body: &CelestialBody,
-        julian_date: f64,
-    ) -> Vector3 {
+    pub fn calculate_mars_perturbation(&self, body: &CelestialBody, julian_date: f64) -> Vector3 {
         // Mars orbital parameters
         const MARS_SEMI_MAJOR: f64 = 1.524 * AU;
         const MARS_ECCENTRICITY: f64 = 0.0934;
@@ -756,28 +774,29 @@ impl VelocityVerletIntegrator {
         let days_since_j2000 = julian_date - 2451545.0;
         let mean_anomaly = 2.0 * std::f64::consts::PI * (days_since_j2000 / MARS_PERIOD_DAYS);
         let ecc_anomaly = mean_anomaly + MARS_ECCENTRICITY * mean_anomaly.sin();
-        let true_anomaly = 2.0 * ((1.0 + MARS_ECCENTRICITY).sqrt() * (ecc_anomaly / 2.0).tan())
-            .atan2((1.0 - MARS_ECCENTRICITY).sqrt());
-        
-        let r_mars = MARS_SEMI_MAJOR * (1.0 - MARS_ECCENTRICITY * MARS_ECCENTRICITY) 
+        let true_anomaly = 2.0
+            * ((1.0 + MARS_ECCENTRICITY).sqrt() * (ecc_anomaly / 2.0).tan())
+                .atan2((1.0 - MARS_ECCENTRICITY).sqrt());
+
+        let r_mars = MARS_SEMI_MAJOR * (1.0 - MARS_ECCENTRICITY * MARS_ECCENTRICITY)
             / (1.0 + MARS_ECCENTRICITY * true_anomaly.cos());
-        
+
         let mars_pos = Vector3::new(
             r_mars * true_anomaly.cos(),
             r_mars * true_anomaly.sin(),
-            0.0
+            0.0,
         );
 
         let r_vec = mars_pos.sub(&body.state.position);
         let r = r_vec.magnitude();
-        
+
         if r < 1e6 {
             return Vector3::zero();
         }
 
         let mu_mars = G * MARS_MASS;
         let accel_mag = mu_mars / (r * r);
-        
+
         r_vec.normalize().scale(accel_mag)
     }
 }
@@ -809,43 +828,43 @@ pub struct MonteCarloResult {
 /// Uses statistical sampling of orbital uncertainty to estimate collision probability
 pub fn monte_carlo_impact_probability(
     asteroid: &CelestialBody,
-    position_uncertainty: f64,     // 3-sigma position uncertainty (meters)
-    velocity_uncertainty: f64,     // 3-sigma velocity uncertainty (m/s)
-    num_runs: u32,                 // Number of Monte Carlo samples (typically 1000-10000)
-    simulation_days: f64,          // How far to propagate (days)
-    earth_radius: f64,             // Earth collision radius (meters)
+    position_uncertainty: f64, // 3-sigma position uncertainty (meters)
+    velocity_uncertainty: f64, // 3-sigma velocity uncertainty (m/s)
+    num_runs: u32,             // Number of Monte Carlo samples (typically 1000-10000)
+    simulation_days: f64,      // How far to propagate (days)
+    earth_radius: f64,         // Earth collision radius (meters)
 ) -> MonteCarloResult {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
-    
+
     let mut impacts = 0u32;
     let mut moid_sum = 0.0f64;
     let mut moid_sq_sum = 0.0f64;
     let mut min_moid = f64::MAX;
-    
+
     // Simple pseudo-random number generator (for deterministic testing)
     let mut hasher = DefaultHasher::new();
     asteroid.id.hash(&mut hasher);
     let mut seed = hasher.finish();
-    
+
     let next_random = |s: &mut u64| -> f64 {
         // LCG parameters (Numerical Recipes)
         *s = s.wrapping_mul(1103515245).wrapping_add(12345);
-        ((*s >> 16) as f64) / 32768.0 * 2.0 - 1.0  // Range: -1 to 1
+        ((*s >> 16) as f64) / 32768.0 * 2.0 - 1.0 // Range: -1 to 1
     };
-    
+
     // Box-Muller transform for Gaussian distribution
     let gaussian = |s: &mut u64, sigma: f64| -> f64 {
-        let u1 = (next_random(s) + 1.0) / 2.0;  // 0 to 1
+        let u1 = (next_random(s) + 1.0) / 2.0; // 0 to 1
         let u2 = (next_random(s) + 1.0) / 2.0;
-        let u1 = u1.max(1e-10);  // Avoid log(0)
+        let u1 = u1.max(1e-10); // Avoid log(0)
         sigma * (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos()
     };
-    
+
     // Earth orbital parameters for approximate position
     let earth_a = AU;
     let earth_period = 365.25 * 86400.0; // seconds
-    
+
     for _run in 0..num_runs {
         // Sample position from Gaussian distribution (3-sigma = position_uncertainty)
         let sigma_pos = position_uncertainty / 3.0;
@@ -854,7 +873,7 @@ pub fn monte_carlo_impact_probability(
             asteroid.state.position.y + gaussian(&mut seed, sigma_pos),
             asteroid.state.position.z + gaussian(&mut seed, sigma_pos),
         );
-        
+
         // Sample velocity
         let sigma_vel = velocity_uncertainty / 3.0;
         let perturbed_vel = Vector3::new(
@@ -862,33 +881,37 @@ pub fn monte_carlo_impact_probability(
             asteroid.state.velocity.y + gaussian(&mut seed, sigma_vel),
             asteroid.state.velocity.z + gaussian(&mut seed, sigma_vel),
         );
-        
+
         // Simple 2-body propagation to find closest approach to Earth
         let mut pos = perturbed_pos;
         let mut vel = perturbed_vel;
         let dt = 3600.0; // 1 hour timestep
         let steps = (simulation_days * 86400.0 / dt) as usize;
-        
+
         let mut closest_approach = f64::MAX;
-        
+
         for step in 0..steps {
             // Simple Kepler orbit for asteroid (around Sun at origin)
             let r = pos.magnitude();
-            if r < 1e6 { break; } // Too close to Sun
-            
+            if r < 1e6 {
+                break;
+            } // Too close to Sun
+
             let accel_mag = MU_SUN / (r * r);
             let accel = pos.normalize().scale(-accel_mag);
-            
+
             // Velocity Verlet half step
             vel = vel.add(&accel.scale(dt / 2.0));
             pos = pos.add(&vel.scale(dt));
-            
+
             // Full acceleration at new position
             let r_new = pos.magnitude();
-            if r_new < 1e6 { break; }
+            if r_new < 1e6 {
+                break;
+            }
             let accel_new = pos.normalize().scale(-MU_SUN / (r_new * r_new));
             vel = vel.add(&accel_new.scale(dt / 2.0));
-            
+
             // Calculate Earth's approximate position
             let t = step as f64 * dt;
             let earth_angle = 2.0 * std::f64::consts::PI * t / earth_period;
@@ -897,20 +920,20 @@ pub fn monte_carlo_impact_probability(
                 earth_a * earth_angle.sin(),
                 0.0,
             );
-            
+
             // Distance to Earth
             let dist_to_earth = pos.sub(&earth_pos).magnitude();
             if dist_to_earth < closest_approach {
                 closest_approach = dist_to_earth;
             }
-            
+
             // Check for impact
             if dist_to_earth < earth_radius {
                 impacts += 1;
                 break;
             }
         }
-        
+
         // Convert to km for statistics
         let moid_km = closest_approach / 1000.0;
         moid_sum += moid_km;
@@ -919,12 +942,12 @@ pub fn monte_carlo_impact_probability(
             min_moid = moid_km;
         }
     }
-    
+
     let impact_probability = impacts as f64 / num_runs as f64;
     let mean_moid = moid_sum / num_runs as f64;
     let variance = (moid_sq_sum / num_runs as f64) - (mean_moid * mean_moid);
     let std_moid = variance.max(0.0).sqrt();
-    
+
     // Calculate Palermo Scale
     // PS = log10(Pi) - log10(fB * Δt)
     // where fB is background impact frequency (~10^-8 per year)
@@ -936,7 +959,7 @@ pub fn monte_carlo_impact_probability(
     } else {
         -10.0 // Very low probability
     };
-    
+
     MonteCarloResult {
         num_runs,
         num_impacts: impacts,
@@ -984,13 +1007,13 @@ pub fn calculate_total_energy(bodies: &[CelestialBody]) -> f64 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimulationState {
     pub bodies: Vec<CelestialBody>,
-    pub time: f64,             // Simulation time in seconds since epoch
-    pub julian_date: f64,      // Current Julian Date
-    pub dt: f64,               // Time step
-    pub time_scale: f64,       // Speed multiplier (1.0 = real-time)
+    pub time: f64,        // Simulation time in seconds since epoch
+    pub julian_date: f64, // Current Julian Date
+    pub dt: f64,          // Time step
+    pub time_scale: f64,  // Speed multiplier (1.0 = real-time)
     pub is_paused: bool,
-    pub total_energy: f64,     // For drift monitoring
-    pub initial_energy: f64,   // Reference energy at start
+    pub total_energy: f64,   // For drift monitoring
+    pub initial_energy: f64, // Reference energy at start
 }
 
 impl SimulationState {
@@ -1007,7 +1030,7 @@ impl SimulationState {
             bodies,
             time: 0.0,
             julian_date,
-            dt: 3600.0, // 1 hour default
+            dt: 3600.0,          // 1 hour default
             time_scale: 86400.0, // 1 day per second
             is_paused: true,
             total_energy: initial_energy,
@@ -1016,9 +1039,15 @@ impl SimulationState {
     }
 
     /// Add an asteroid from orbital elements
-    pub fn add_asteroid(&mut self, id: &str, name: &str, elements: OrbitalElements, estimated_diameter: f64) {
+    pub fn add_asteroid(
+        &mut self,
+        id: &str,
+        name: &str,
+        elements: OrbitalElements,
+        estimated_diameter: f64,
+    ) {
         let state = elements.to_state_vector(MU_SUN);
-        
+
         // Estimate mass from diameter (assuming density of 2000 kg/m³)
         let radius = estimated_diameter / 2.0;
         let volume = (4.0 / 3.0) * PI * radius.powi(3);
@@ -1047,10 +1076,18 @@ impl SimulationState {
 
     /// Apply continuous ion beam thrust (small Δv over time)
     /// thrust_acceleration in m/s², duration in seconds
-    pub fn apply_ion_beam(&mut self, body_id: &str, thrust_direction: Vector3, thrust_magnitude: f64, duration: f64) {
+    pub fn apply_ion_beam(
+        &mut self,
+        body_id: &str,
+        thrust_direction: Vector3,
+        thrust_magnitude: f64,
+        duration: f64,
+    ) {
         if let Some(body) = self.bodies.iter_mut().find(|b| b.id == body_id) {
             // Δv = a * t where a = thrust_magnitude
-            let delta_v = thrust_direction.normalize().scale(thrust_magnitude * duration);
+            let delta_v = thrust_direction
+                .normalize()
+                .scale(thrust_magnitude * duration);
             body.state.velocity = body.state.velocity.add(&delta_v);
         }
     }
@@ -1095,7 +1132,10 @@ impl SimulationState {
         // Check distances between all bodies
         for i in 0..self.bodies.len() {
             for j in (i + 1)..self.bodies.len() {
-                let r_vec = self.bodies[i].state.position.sub(&self.bodies[j].state.position);
+                let r_vec = self.bodies[i]
+                    .state
+                    .position
+                    .sub(&self.bodies[j].state.position);
                 let distance = r_vec.magnitude();
 
                 // If very close (within 10 Earth radii), reduce time step
@@ -1140,7 +1180,7 @@ mod tests {
         // Create a simple 2-body Sun-Earth system
         let julian_date = 2451545.0; // J2000
         let mut state = SimulationState::new(julian_date);
-        
+
         // Remove moon for simpler test
         state.bodies.retain(|b| b.id != "moon");
 

@@ -1,9 +1,9 @@
 // NASA NeoWs API Client
 // Fetches Near-Earth Object data from NASA's API
 
+use crate::physics_engine::{OrbitalElements, AU};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::physics_engine::{OrbitalElements, AU};
 use std::f64::consts::PI;
 
 const NEOWS_BASE_URL: &str = "https://api.nasa.gov/neo/rest/v1";
@@ -143,7 +143,7 @@ pub struct ProcessedAsteroid {
     pub name: String,
     pub orbital_elements: OrbitalElements,
     pub estimated_diameter_m: f64,
-    pub estimated_mass_kg: f64,  // NEW: estimated mass
+    pub estimated_mass_kg: f64, // NEW: estimated mass
     pub is_potentially_hazardous: bool,
     pub absolute_magnitude: f64,
     pub orbit_class: String,
@@ -164,19 +164,19 @@ fn estimate_density(orbit_class: &str) -> f64 {
     match orbit_class.to_uppercase().as_str() {
         // NEA orbital classes - use mixed default
         "AMO" | "APO" | "ATE" | "IEO" => 2000.0,
-        
+
         // Spectral-based estimates
-        s if s.contains('C') => 1700.0,   // C-type: carbonaceous
-        s if s.contains('B') => 1500.0,   // B-type: primitive
-        s if s.contains('D') => 1200.0,   // D-type: organic-rich
-        s if s.contains('P') => 1300.0,   // P-type: primitive
-        s if s.contains('S') => 2700.0,   // S-type: silicaceous
-        s if s.contains('Q') => 2500.0,   // Q-type: ordinary chondrite
-        s if s.contains('V') => 3200.0,   // V-type: basaltic (Vesta-like)
-        s if s.contains('M') => 4000.0,   // M-type: metallic
-        s if s.contains('X') => 3500.0,   // X-type: unknown metal-rich
-        
-        _ => 2000.0  // Default rubble pile average
+        s if s.contains('C') => 1700.0, // C-type: carbonaceous
+        s if s.contains('B') => 1500.0, // B-type: primitive
+        s if s.contains('D') => 1200.0, // D-type: organic-rich
+        s if s.contains('P') => 1300.0, // P-type: primitive
+        s if s.contains('S') => 2700.0, // S-type: silicaceous
+        s if s.contains('Q') => 2500.0, // Q-type: ordinary chondrite
+        s if s.contains('V') => 3200.0, // V-type: basaltic (Vesta-like)
+        s if s.contains('M') => 4000.0, // M-type: metallic
+        s if s.contains('X') => 3500.0, // X-type: unknown metal-rich
+
+        _ => 2000.0, // Default rubble pile average
     }
 }
 
@@ -192,21 +192,35 @@ impl NeoObject {
     /// Convert NASA API response to our internal format
     pub fn to_processed(&self) -> Option<ProcessedAsteroid> {
         let orbital_data = self.orbital_data.as_ref()?;
-        
+
         // Parse orbital elements (convert from string to f64)
-        let semi_major_axis_au = orbital_data.semi_major_axis.as_ref()
+        let semi_major_axis_au = orbital_data
+            .semi_major_axis
+            .as_ref()
             .and_then(|s| s.parse::<f64>().ok())?;
-        let eccentricity = orbital_data.eccentricity.as_ref()
+        let eccentricity = orbital_data
+            .eccentricity
+            .as_ref()
             .and_then(|s| s.parse::<f64>().ok())?;
-        let inclination_deg = orbital_data.inclination.as_ref()
+        let inclination_deg = orbital_data
+            .inclination
+            .as_ref()
             .and_then(|s| s.parse::<f64>().ok())?;
-        let ascending_node_deg = orbital_data.ascending_node_longitude.as_ref()
+        let ascending_node_deg = orbital_data
+            .ascending_node_longitude
+            .as_ref()
             .and_then(|s| s.parse::<f64>().ok())?;
-        let perihelion_arg_deg = orbital_data.perihelion_argument.as_ref()
+        let perihelion_arg_deg = orbital_data
+            .perihelion_argument
+            .as_ref()
             .and_then(|s| s.parse::<f64>().ok())?;
-        let mean_anomaly_deg = orbital_data.mean_anomaly.as_ref()
+        let mean_anomaly_deg = orbital_data
+            .mean_anomaly
+            .as_ref()
             .and_then(|s| s.parse::<f64>().ok())?;
-        let epoch = orbital_data.epoch_osculation.as_ref()
+        let epoch = orbital_data
+            .epoch_osculation
+            .as_ref()
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(2460000.5);
 
@@ -221,28 +235,42 @@ impl NeoObject {
         };
 
         // Get estimated diameter
-        let diameter = self.estimated_diameter.as_ref()
+        let diameter = self
+            .estimated_diameter
+            .as_ref()
             .and_then(|d| d.meters.as_ref())
             .map(|m| (m.estimated_diameter_min + m.estimated_diameter_max) / 2.0)
             .unwrap_or(100.0);
 
         // Process close approaches
-        let close_approaches = self.close_approach_data.as_ref()
+        let close_approaches = self
+            .close_approach_data
+            .as_ref()
             .map(|approaches| {
-                approaches.iter().filter_map(|ca| {
-                    Some(ProcessedCloseApproach {
-                        date: ca.close_approach_date.clone().unwrap_or_default(),
-                        miss_distance_km: ca.miss_distance.as_ref()
-                            .and_then(|m| m.kilometers.as_ref())
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(0.0),
-                        velocity_km_s: ca.relative_velocity.as_ref()
-                            .and_then(|v| v.kilometers_per_second.as_ref())
-                            .and_then(|s| s.parse().ok())
-                            .unwrap_or(0.0),
-                        orbiting_body: ca.orbiting_body.clone().unwrap_or_else(|| "Earth".to_string()),
+                approaches
+                    .iter()
+                    .filter_map(|ca| {
+                        Some(ProcessedCloseApproach {
+                            date: ca.close_approach_date.clone().unwrap_or_default(),
+                            miss_distance_km: ca
+                                .miss_distance
+                                .as_ref()
+                                .and_then(|m| m.kilometers.as_ref())
+                                .and_then(|s| s.parse().ok())
+                                .unwrap_or(0.0),
+                            velocity_km_s: ca
+                                .relative_velocity
+                                .as_ref()
+                                .and_then(|v| v.kilometers_per_second.as_ref())
+                                .and_then(|s| s.parse().ok())
+                                .unwrap_or(0.0),
+                            orbiting_body: ca
+                                .orbiting_body
+                                .clone()
+                                .unwrap_or_else(|| "Earth".to_string()),
+                        })
                     })
-                }).collect()
+                    .collect()
             })
             .unwrap_or_default();
 
@@ -251,12 +279,19 @@ impl NeoObject {
             name: self.name.clone(),
             orbital_elements,
             estimated_diameter_m: diameter,
-            estimated_mass_kg: estimate_mass(diameter, &orbital_data.orbit_class.as_ref()
-                .and_then(|c| c.orbit_class_type.clone())
-                .unwrap_or_else(|| "Unknown".to_string())),
+            estimated_mass_kg: estimate_mass(
+                diameter,
+                &orbital_data
+                    .orbit_class
+                    .as_ref()
+                    .and_then(|c| c.orbit_class_type.clone())
+                    .unwrap_or_else(|| "Unknown".to_string()),
+            ),
             is_potentially_hazardous: self.is_potentially_hazardous_asteroid.unwrap_or(false),
             absolute_magnitude: self.absolute_magnitude_h.unwrap_or(0.0),
-            orbit_class: orbital_data.orbit_class.as_ref()
+            orbit_class: orbital_data
+                .orbit_class
+                .as_ref()
                 .and_then(|c| c.orbit_class_type.clone())
                 .unwrap_or_else(|| "Unknown".to_string()),
             close_approaches,
@@ -282,13 +317,19 @@ impl NeoWsClient {
     }
 
     /// Fetch NEOs that approach Earth in a date range
-    pub async fn fetch_feed(&self, start_date: &str, end_date: &str) -> Result<Vec<ProcessedAsteroid>, String> {
+    pub async fn fetch_feed(
+        &self,
+        start_date: &str,
+        end_date: &str,
+    ) -> Result<Vec<ProcessedAsteroid>, String> {
         let url = format!(
             "{}/feed?start_date={}&end_date={}&api_key={}",
             NEOWS_BASE_URL, start_date, end_date, self.api_key
         );
 
-        let response = self.client.get(&url)
+        let response = self
+            .client
+            .get(&url)
             .send()
             .await
             .map_err(|e| format!("Request failed: {}", e))?;
@@ -297,7 +338,8 @@ impl NeoWsClient {
             return Err(format!("API returned status: {}", response.status()));
         }
 
-        let data: NeoWsResponse = response.json()
+        let data: NeoWsResponse = response
+            .json()
             .await
             .map_err(|e| format!("Failed to parse response: {}", e))?;
 
@@ -316,13 +358,19 @@ impl NeoWsClient {
     }
 
     /// Browse all NEOs with pagination
-    pub async fn browse(&self, page: i32, size: i32) -> Result<(Vec<ProcessedAsteroid>, i32), String> {
+    pub async fn browse(
+        &self,
+        page: i32,
+        size: i32,
+    ) -> Result<(Vec<ProcessedAsteroid>, i32), String> {
         let url = format!(
             "{}/neo/browse?page={}&size={}&api_key={}",
             NEOWS_BASE_URL, page, size, self.api_key
         );
 
-        let response = self.client.get(&url)
+        let response = self
+            .client
+            .get(&url)
             .send()
             .await
             .map_err(|e| format!("Request failed: {}", e))?;
@@ -331,12 +379,14 @@ impl NeoWsClient {
             return Err(format!("API returned status: {}", response.status()));
         }
 
-        let data: BrowseResponse = response.json()
+        let data: BrowseResponse = response
+            .json()
             .await
             .map_err(|e| format!("Failed to parse response: {}", e))?;
 
         let total_pages = data.page.map(|p| p.total_pages).unwrap_or(1);
-        let asteroids: Vec<ProcessedAsteroid> = data.near_earth_objects
+        let asteroids: Vec<ProcessedAsteroid> = data
+            .near_earth_objects
             .into_iter()
             .filter_map(|neo| neo.to_processed())
             .collect();
@@ -346,12 +396,11 @@ impl NeoWsClient {
 
     /// Fetch a specific NEO by ID
     pub async fn fetch_neo(&self, neo_id: &str) -> Result<ProcessedAsteroid, String> {
-        let url = format!(
-            "{}/neo/{}?api_key={}",
-            NEOWS_BASE_URL, neo_id, self.api_key
-        );
+        let url = format!("{}/neo/{}?api_key={}", NEOWS_BASE_URL, neo_id, self.api_key);
 
-        let response = self.client.get(&url)
+        let response = self
+            .client
+            .get(&url)
             .send()
             .await
             .map_err(|e| format!("Request failed: {}", e))?;
@@ -360,11 +409,13 @@ impl NeoWsClient {
             return Err(format!("API returned status: {}", response.status()));
         }
 
-        let neo: NeoObject = response.json()
+        let neo: NeoObject = response
+            .json()
             .await
             .map_err(|e| format!("Failed to parse response: {}", e))?;
 
-        neo.to_processed().ok_or_else(|| "Failed to process NEO data".to_string())
+        neo.to_processed()
+            .ok_or_else(|| "Failed to process NEO data".to_string())
     }
 }
 
@@ -372,8 +423,8 @@ impl NeoWsClient {
 // CACHE MANAGER
 // =============================================================================
 
-use std::sync::Arc;
 use parking_lot::RwLock;
+use std::sync::Arc;
 
 #[allow(dead_code)]
 pub struct CacheManager {

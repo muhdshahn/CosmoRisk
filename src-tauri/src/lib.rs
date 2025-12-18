@@ -1,32 +1,20 @@
 // Orbital Sentinel - NEO Tracking & Deflection Simulator
 // Main entry point for Tauri application
 
-mod physics_engine;
 mod api_client;
+mod physics_engine;
 mod state_manager;
 
 use state_manager::{
-    AppState,
-    get_simulation_state,
-    set_paused,
-    set_time_scale,
-    set_time_step,
-    reset_simulation,
-    apply_deflection,
-    set_api_key,
-    fetch_asteroids,
-    fetch_more_asteroids,
-    get_body_details,
-    get_cached_asteroids,
-    apply_ion_beam,
-    get_impact_prediction,
-    start_simulation_loop,
+    apply_deflection, apply_ion_beam, fetch_asteroids, fetch_more_asteroids, get_body_details,
+    get_cached_asteroids, get_impact_prediction, get_simulation_state, reset_simulation,
+    set_api_key, set_paused, set_time_scale, set_time_step, start_simulation_loop, AppState,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState::new();
-    
+
     // Start background simulation loop
     let sim_state = app_state.simulation.clone();
     let is_running = app_state.is_running.clone();
